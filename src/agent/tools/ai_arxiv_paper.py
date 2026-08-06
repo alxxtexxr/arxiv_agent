@@ -9,22 +9,23 @@ from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_openai import OpenAIEmbeddings
 from langchain.tools import tool
 
+from agent.utils import format_arxiv_paper
+
 load_dotenv() # Load environment variables from .env file
 
-rss_url = "http://rss.arxiv.org/rss/cs.AI"
-feed = feedparser.parse(rss_url)
+AI_ARXIV_RSS_URL = "http://rss.arxiv.org/rss/cs.AI"
 
-ARXIV_PAPER_DOC = "Title: {title}\nLink: {link}\nAbstract: {summary}"
+feed = feedparser.parse(AI_ARXIV_RSS_URL)
 paper_docs = [
-    ARXIV_PAPER_DOC.format(
+    format_arxiv_paper(
         title=entry.title, 
         link=entry.link, 
-        summary=entry.summary.split("Abstract:", 1)[-1].strip(),
+        abstract=entry.summary.split("Abstract:", 1)[-1].strip(),
     ) for entry in feed.entries
 ]
 
 text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-    chunk_size=100,
+    chunk_size=250,
     chunk_overlap=50,
 )
 doc_splits = text_splitter.create_documents(
@@ -43,6 +44,7 @@ def _get_retriever():
 @tool
 def recommend_todays_arxiv_ai_papers(mode: Literal["query_based", "personalized"], query: str | None = None) -> str:
     """Recommend today's arXiv AI papers based on the specified mode."""
+    
     assert mode in ["query_based", "personalized"], "Mode must be either 'query_based' or 'personalized'."
     
     if mode == "query_based":
@@ -56,6 +58,7 @@ def recommend_todays_arxiv_ai_papers(mode: Literal["query_based", "personalized"
     
     return "\n\n".join(paper_docs[i] for i in paper_indices)
 
+# Test the tool function
 if __name__ == "__main__":
     from pprint import pprint
     pprint(recommend_todays_arxiv_ai_papers.invoke(input={"mode": "query_based", "query": "machine learning"}))
