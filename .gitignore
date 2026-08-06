@@ -162,5 +162,7 @@ cython_debug/
 #.idea/
 .langgraph_api/
 
-# Misc.
+# Miscellaneous
 opencode.jsonc
+*.md
+!README.md
