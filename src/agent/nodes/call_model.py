@@ -1,21 +1,20 @@
 """Model-calling node for the agent graph."""
 
-import os
 from typing import Any, Dict
 
+from langgraph.graph import MessagesState
 from langchain.messages import SystemMessage
-from langgraph.runtime import Runtime
 
 from agent.model import model_with_tools
-from agent.state import Context, State
 
-def call_model(state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
-    """Call the model to decide whether to call a tool or respond."""
+SYSTEM_PROMPT = "You are a helpful assistant."
+
+def call_model(state: MessagesState) -> Dict[str, Any]:
+    """Call the model with the current state and return the new messages."""
     return {
         "messages": [
             model_with_tools.invoke([
-                SystemMessage(content=os.environ["SYSTEM_PROMPT"]),
+                SystemMessage(content=SYSTEM_PROMPT),
             ] + state["messages"]),
         ],
-        "num_model_calls": state.get("num_model_calls", 0) + 1,
     }

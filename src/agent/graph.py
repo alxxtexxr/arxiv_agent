@@ -1,12 +1,11 @@
 """Agent graph definition."""
 
-from langgraph.graph import StateGraph
+from langgraph.graph import StateGraph, MessagesState
 
 from agent.nodes import call_model, call_tool, call_tool_or_stop
-from agent.state import Context, State
 
 graph = (
-    StateGraph(State, context_schema=Context)
+    StateGraph(MessagesState)
     
     # Add nodes to the graph
     .add_node("call_model", call_model)

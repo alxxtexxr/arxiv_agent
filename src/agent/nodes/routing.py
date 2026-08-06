@@ -2,10 +2,10 @@
 
 from typing import Literal
 
-from agent.state import State
+from langgraph.graph import MessagesState
 
-def call_tool_or_stop(state: State) -> Literal["call_tool", "__end__"]:
-    """Determine whether to call a tool or stop."""
+def call_tool_or_stop(state: MessagesState) -> Literal["call_tool", "__end__"]:
+    """Determine whether to call a tool or stop the agent."""
     last_message = state["messages"][-1]
     if last_message.tool_calls:
         return "call_tool"
