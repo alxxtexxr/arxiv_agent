@@ -1,17 +1,29 @@
-from typing import Literal
+"""arXiv AI paper recommendation tool.
+
+Fetches today's cs.AI feed, embeds the papers with a local embedding model
+(BAAI/bge-m3), stores the vectors in a FAISS index persisted to disk, and
+recommends papers via retrieval plus cross-encoder reranking.
+"""
+
+import hashlib
+import os
 from builtins import sorted
+from typing import Literal
 
 import feedparser
-from dotenv import load_dotenv
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from anyio.functools import lru_cache
-from langchain_core.vectorstores import InMemoryVectorStore
+from dotenv import load_dotenv
+from langchain.tools import tool
+from langchain_classic.retrievers.contextual_compression import (
+    ContextualCompressionRetriever,
+)
+from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+from langchain_community.vectorstores import FAISS
+
 # from langchain_openai import OpenAIEmbeddings
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.cross_encoders import HuggingFaceCrossEncoder
-from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
-from langchain_classic.retrievers.contextual_compression import ContextualCompressionRetriever
-from langchain.tools import tool
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from agent.utils import format_arxiv_paper
 
@@ -44,16 +56,32 @@ doc_splits = text_splitter.create_documents(
 @lru_cache(maxsize=1)
 def _get_compression_retriever(top_n=5) -> ContextualCompressionRetriever:
     """Get a compression retriever for today's arXiv AI papers."""
-    
     # Define the embedding model and retriever
     embedding_model = HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL_NAME,
         encode_kwargs={"normalize_embeddings": True},
     )
-    retriever = InMemoryVectorStore.from_documents(
-        documents=doc_splits,
-        embedding=embedding_model,
-    ).as_retriever()
+    
+    # Persist the FAISS index on disk, keyed by the feed content hash, so that
+    # process restarts/reloads skip re-embedding the full feed (~60s) and load
+    # the index in <1s. The index is rebuilt automatically when the feed changes.
+    feed_hash = hashlib.sha1("\n".join(paper_docs).encode()).hexdigest()[:12]
+    store_dir = os.path.join(os.path.dirname(__file__), "..", "data", f"arxiv_ai_faiss_{feed_hash}")
+    
+    if os.path.isdir(store_dir):
+        # allow_dangerous_deserialization is required because the FAISS index
+        # pickles its document store. It is safe here because the index is only
+        # ever loaded from a path this module wrote itself.
+        store = FAISS.load_local(
+            store_dir,
+            embeddings=embedding_model,
+            allow_dangerous_deserialization=True,
+        )
+    else:
+        store = FAISS.from_documents(doc_splits, embedding_model)
+        store.save_local(store_dir)
+    
+    retriever = store.as_retriever()
     
     # Define the reranker model and compression retriever
     reranker_model = HuggingFaceCrossEncoder(

@@ -162,6 +162,9 @@ cython_debug/
 #.idea/
 .langgraph_api/
 
+# Generated FAISS indexes (rebuilt from the daily arXiv feed; feed-hash keyed)
+src/agent/data/arxiv_ai_faiss_*/
+
 # Miscellaneous
 opencode.jsonc
 *.md
