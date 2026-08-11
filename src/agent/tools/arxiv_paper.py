@@ -8,7 +8,7 @@ recommends papers via retrieval plus cross-encoder reranking.
 import hashlib
 import os
 from builtins import sorted
-from typing import Literal
+from typing import Any, Literal
 
 import feedparser
 from anyio.functools import lru_cache
@@ -20,6 +20,7 @@ from langchain_classic.retrievers.contextual_compression import (
 from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain_community.vectorstores import FAISS
+from langchain_core.vectorstores import VectorStoreRetriever
 
 # from langchain_openai import OpenAIEmbeddings
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -34,6 +35,8 @@ CHUNK_SIZE = 250
 CHUNK_OVERLAP = 50
 EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
 RERANKER_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
+MAX_RECOMMENDATIONS = 5
+MAX_BOOKMARKS_PROCESSED = 10
 
 try:
     feed = feedparser.parse(f"http://rss.arxiv.org/rss/{ARXIV_CATEGORY}")
@@ -58,8 +61,8 @@ doc_splits = text_splitter.create_documents(
 )
 
 @lru_cache(maxsize=1)
-def _get_compression_retriever(top_n=5) -> ContextualCompressionRetriever:
-    """Get a compression retriever for today's arXiv papers."""
+def _get_retriever() -> VectorStoreRetriever:
+    """Get a retriever for today's arXiv papers."""
     # Define the embedding model and retriever
     embedding_model = HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL_NAME,
@@ -90,41 +93,85 @@ def _get_compression_retriever(top_n=5) -> ContextualCompressionRetriever:
     
     retriever = store.as_retriever()
     
+    return retriever
+    
+@lru_cache(maxsize=1)
+def _get_compression_retriever(top_n=5) -> ContextualCompressionRetriever:
+    """Get a compression retriever for today's arXiv papers."""
     # Define the reranker model and compression retriever
     reranker_model = HuggingFaceCrossEncoder(
         model_name=RERANKER_MODEL_NAME,
     )
     reranker = CrossEncoderReranker(model=reranker_model, top_n=top_n)
     compression_retriever = ContextualCompressionRetriever(
-        base_retriever=retriever, 
+        base_retriever=_get_retriever(), 
         base_compressor=reranker,
     )
     
     return compression_retriever
 
-def _recommend_data_query_based(query: str) -> list[str]:
+def _recommend_data_query_based(query: str, max_recommendations: int = MAX_RECOMMENDATIONS) -> list[str]:
     """Recommend today's arXiv papers based on a query."""
     compression_retriever = _get_compression_retriever()
     retrieved_doc_splits = compression_retriever.invoke(query)
     retrieved_doc_indices = sorted({doc.metadata["paper_index"] for doc in retrieved_doc_splits})
-    retrieved_docs = [paper_docs[i] for i in retrieved_doc_indices]
-    return retrieved_docs
+    return [paper_docs[i] for i in retrieved_doc_indices[:max_recommendations]]
 
-def _recommend_data_personalized() -> list[str]:
-    """Recommend today's arXiv papers based on personalized criteria."""
-    # Placeholder for personalized recommendation logic
-    # This could involve user profiles, past interactions, etc.
-    return []
+_bookmark_cache: dict[str, list[dict[str, Any]]] = {}
+
+def _fetch_bookmarked_papers() -> list[dict[str, Any]]:
+    """Fetch bookmarked papers, cached by links-file content hash."""
+    from agent.tools import bookmarked_arxiv_paper
+    
+    links_file = bookmarked_arxiv_paper.BOOKMARKED_ARXIV_LINKS_FILE
+    cache_key = hashlib.sha1(links_file.read_text().encode()).hexdigest()
+    if cache_key not in _bookmark_cache:
+        _bookmark_cache.clear()
+        _bookmark_cache[cache_key] = bookmarked_arxiv_paper._fetch_data()
+    return _bookmark_cache[cache_key]
+
+def _recommend_data_personalized(max_recommendations: int = MAX_RECOMMENDATIONS) -> list[str]:
+    """Recommend today's arXiv papers based on the user's bookmarks.
+    
+    Each bookmarked paper is run through the compression (retrieval + rerank)
+    pipeline as a query. Today's papers are ranked by how many bookmarks
+    surfaced them, tie-broken by feed order, and capped at max_recommendations.
+    """
+    bookmarked_papers = _fetch_bookmarked_papers()
+    if not bookmarked_papers:
+        return []
+    
+    compression_retriever = _get_compression_retriever()
+    candidates: dict[int, int] = {} # {paper_index: match count}
+    for paper in bookmarked_papers[:MAX_BOOKMARKS_PROCESSED]:
+        query = format_arxiv_paper(
+            title=paper["title"],
+            link=paper["link"],
+            abstract=paper["abstract"],
+        )
+        retrieved_doc_splits = compression_retriever.invoke(query)
+        for paper_index in {doc.metadata["paper_index"] for doc in retrieved_doc_splits}:
+            candidates[paper_index] = candidates.get(paper_index, 0) + 1
+    
+    ranked_indices = sorted(candidates, key=lambda i: (-candidates[i], i))
+    return [paper_docs[i] for i in ranked_indices[:max_recommendations]]
 
 @tool
 def recommend_todays_arxiv_papers(mode: Literal["query_based", "personalized"], query: str | None = None) -> str:
-    """Recommend today's arXiv papers based on the specified mode."""
+    """Recommend today's arXiv papers based on either a query or the user's bookmarks."""
+    if not paper_docs:
+        return "Could not fetch today's arXiv feed."
+    
     retrieved_docs = []
     if mode == "query_based":
         assert query is not None, "Query must be provided for query-based recommendations."
         retrieved_docs = _recommend_data_query_based(query)
+        if not retrieved_docs:
+            return "No matching papers found for the query."
     elif mode == "personalized":
         retrieved_docs = _recommend_data_personalized()
+        if not retrieved_docs:
+            return "No bookmarked papers found to base personalized recommendations on."
     else:
         raise ValueError("Invalid mode. Please choose 'query_based' or 'personalized'.")
     return "\n\n".join(retrieved_docs)
@@ -132,4 +179,6 @@ def recommend_todays_arxiv_papers(mode: Literal["query_based", "personalized"], 
 # Test the tool function
 if __name__ == "__main__":
     from pprint import pprint
+    
     pprint(recommend_todays_arxiv_papers.invoke(input={"mode": "query_based", "query": "machine learning"}))
+    pprint(recommend_todays_arxiv_papers.invoke(input={"mode": "personalized"}))
