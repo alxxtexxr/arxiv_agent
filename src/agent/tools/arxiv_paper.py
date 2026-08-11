@@ -6,7 +6,6 @@ the arXiv API), stores the chunks and their bge-m3 embeddings in PostgreSQL
 """
 
 import hashlib
-import os
 import re
 from builtins import sorted
 from datetime import date as date_cls
@@ -92,11 +91,17 @@ def _fetch_feed_entries() -> list[dict[str, str]]:
 
 
 def _fetch_api_entries_for_date(target_date: str) -> list[dict[str, str]]:
-    """Fetch papers submitted on a specific date via the arXiv API."""
+    """Fetch papers announced on a specific date via the arXiv API.
+
+    ``announced_date_first`` matches the announcement date (what the RSS feed
+    represents as "today's papers"), unlike ``submittedDate`` which matches
+    the original submission timestamp and can predate the announcement by
+    days or weeks.
+    """
     compact_date = target_date.replace("-", "")
     query = (
         f"cat:{ARXIV_CATEGORY} AND "
-        f"submittedDate:[{compact_date}0000 TO {compact_date}2359]"
+        f"announced_date_first:[{compact_date}0000 TO {compact_date}2359]"
     )
     search = arxiv_api.Search(
         query=query,
@@ -152,13 +157,18 @@ def _sync_date(target_date: str) -> int:
 
 
 def _ensure_synced(target_date: str) -> None:
-    """Ensure a date's papers are stored, syncing once per date per process."""
+    """Ensure a date's papers are stored, syncing once per date per process.
+
+    A date is only marked as synced once papers actually landed in the
+    database, so a transient fetch failure is retried on the next call.
+    """
     _ensure_db_ready()
     if target_date in _synced_dates:
         return
     if not db.date_has_papers(target_date):
         _sync_date(target_date)
-    _synced_dates.add(target_date)
+    if db.date_has_papers(target_date):
+        _synced_dates.add(target_date)
 
 
 class _ArxivDateRetriever(BaseRetriever):

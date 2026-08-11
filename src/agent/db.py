@@ -1,9 +1,11 @@
 """PostgreSQL + pgvector storage layer for arXiv papers.
 
-Hand-rolled SQL (no ORM/vectorstore wrapper): an explicit schema with a
-unique constraint per (arxiv_id, chunk_idx) for idempotent upserts, a btree
-index on the publication date for date-based retrieval, and an HNSW index on
-the embeddings for approximate cosine similarity search.
+Hand-rolled SQL (no ORM/vectorstore wrapper) with a normalized schema: paper
+metadata lives once in ``arxiv_papers``, while chunks and their bge-m3
+embeddings live in ``arxiv_paper_chunks``. Idempotent upserts are backed by
+unique constraints on the natural keys (arxiv_id / arxiv_id + chunk_idx), a
+btree index enables date-based retrieval, and an HNSW index on the embeddings
+provides approximate cosine similarity search.
 """
 
 import os
@@ -17,12 +19,18 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS arxiv_papers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    arxiv_id TEXT NOT NULL,
-    chunk_idx INT NOT NULL,
+    arxiv_id TEXT NOT NULL UNIQUE,
     title TEXT NOT NULL,
     link TEXT NOT NULL,
     abstract TEXT NOT NULL,
     published_date DATE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS arxiv_paper_chunks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    arxiv_id TEXT NOT NULL REFERENCES arxiv_papers (arxiv_id) ON DELETE CASCADE,
+    chunk_idx INT NOT NULL,
     content TEXT NOT NULL,
     embedding VECTOR(1024) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -32,31 +40,35 @@ CREATE TABLE IF NOT EXISTS arxiv_papers (
 CREATE INDEX IF NOT EXISTS idx_arxiv_papers_date
     ON arxiv_papers (published_date);
 
-CREATE INDEX IF NOT EXISTS idx_arxiv_papers_embedding
-    ON arxiv_papers USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_arxiv_paper_chunks_embedding
+    ON arxiv_paper_chunks USING hnsw (embedding vector_cosine_ops);
 """
 
-UPSERT_SQL = """
-INSERT INTO arxiv_papers
-    (arxiv_id, chunk_idx, title, link, abstract, published_date, content, embedding)
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-ON CONFLICT (arxiv_id, chunk_idx) DO UPDATE SET
+UPSERT_PAPER_SQL = """
+INSERT INTO arxiv_papers (arxiv_id, title, link, abstract, published_date)
+VALUES (%s, %s, %s, %s, %s)
+ON CONFLICT (arxiv_id) DO UPDATE SET
     title = EXCLUDED.title,
     link = EXCLUDED.link,
     abstract = EXCLUDED.abstract,
+    published_date = EXCLUDED.published_date
+"""
+
+UPSERT_CHUNK_SQL = """
+INSERT INTO arxiv_paper_chunks (arxiv_id, chunk_idx, content, embedding)
+VALUES (%s, %s, %s, %s)
+ON CONFLICT (arxiv_id, chunk_idx) DO UPDATE SET
     content = EXCLUDED.content,
     embedding = EXCLUDED.embedding
 """
 
-# '<=>' computes cosine distance (smaller is better)
-# cosine distance = 1 - cosine similarity
-# score = 1 - cosine distance = cosine similarity
 SEARCH_SQL = """
-SELECT arxiv_id, chunk_idx, title, link, abstract, content,
-       1 - (embedding <=> %s) AS score
-FROM arxiv_papers
-WHERE published_date = %s
-ORDER BY embedding <=> %s
+SELECT c.arxiv_id, c.chunk_idx, p.title, p.link, p.abstract, c.content,
+       1 - (c.embedding <=> %s) AS score
+FROM arxiv_paper_chunks c
+JOIN arxiv_papers p ON p.arxiv_id = c.arxiv_id
+WHERE p.published_date = %s
+ORDER BY c.embedding <=> %s
 LIMIT %s
 """
 
@@ -65,11 +77,10 @@ SELECT EXISTS (SELECT 1 FROM arxiv_papers WHERE published_date = %s)
 """
 
 PAPERS_BY_DATE_SQL = """
-SELECT arxiv_id, title, link, abstract, min(created_at) AS first_seen
+SELECT arxiv_id, title, link, abstract, created_at AS first_seen
 FROM arxiv_papers
 WHERE published_date = %s
-GROUP BY arxiv_id, title, link, abstract
-ORDER BY first_seen
+ORDER BY created_at
 """
 
 
@@ -81,7 +92,7 @@ def _connect() -> psycopg.Connection:
 
 
 def init_schema() -> None:
-    """Create the extension, table, and indexes if they do not exist.
+    """Create the extension, tables, and indexes if they do not exist.
 
     Uses an unregistered connection: the schema SQL creates the ``vector``
     type itself, so ``register_vector`` (which requires the type to exist)
@@ -100,22 +111,34 @@ def date_has_papers(published_date: str) -> bool:
 
 
 def upsert_papers(published_date: str, rows: list[dict]) -> None:
-    """Idempotently insert or update paper chunks for a date."""
-    params = [
+    """Idempotently upsert paper metadata and chunks for a date.
+
+    Both phases run in a single transaction so a partial failure cannot
+    leave metadata and chunks out of sync.
+    """
+    paper_params = [
         (
             row["arxiv_id"],
-            row["chunk_idx"],
             row["title"],
             row["link"],
             row["abstract"],
             published_date,
+        )
+        for row in rows
+    ]
+    chunk_params = [
+        (
+            row["arxiv_id"],
+            row["chunk_idx"],
             row["content"],
             Vector(row["embedding"]),
         )
         for row in rows
     ]
-    with _connect() as connection, connection.cursor() as cursor:
-        cursor.executemany(UPSERT_SQL, params)
+    with _connect() as connection, connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.executemany(UPSERT_PAPER_SQL, paper_params)
+            cursor.executemany(UPSERT_CHUNK_SQL, chunk_params)
 
 
 def search_by_date(published_date: str, query_vector: list[float], k: int) -> list[dict]:
