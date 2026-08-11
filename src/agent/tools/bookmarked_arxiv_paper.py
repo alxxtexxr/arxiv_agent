@@ -1,4 +1,4 @@
-"""bookmarked arXiv paper tools and helpers."""
+"""Bookmarked arXiv paper tools and helpers."""
 
 from pathlib import Path
 from typing import Any
