@@ -39,6 +39,13 @@ RERANKER_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
 MAX_RECOMMENDATIONS = 5
 MAX_BOOKMARKS_PROCESSED = 10
 
+# Stored chunks are keyed to the configuration that produced them; changing
+# any of the covered knobs invalidates stored embeddings, and the next access
+# of a date re-syncs it with the new configuration.
+EMBEDDING_VERSION = hashlib.sha1(
+    f"{CHUNK_SIZE}:{CHUNK_OVERLAP}:{EMBEDDING_MODEL_NAME}".encode()
+).hexdigest()[:12]
+
 text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
     chunk_size=CHUNK_SIZE,
     chunk_overlap=CHUNK_OVERLAP,
@@ -91,17 +98,22 @@ def _fetch_feed_entries() -> list[dict[str, str]]:
 
 
 def _fetch_api_entries_for_date(target_date: str) -> list[dict[str, str]]:
-    """Fetch papers announced on a specific date via the arXiv API.
+    """Fetch papers for a specific date via the arXiv API.
 
-    ``announced_date_first`` matches the announcement date (what the RSS feed
-    represents as "today's papers"), unlike ``submittedDate`` which matches
-    the original submission timestamp and can predate the announcement by
-    days or weeks.
+    Uses ``submittedDate`` (original submission date), the only reliable
+    date field on the legacy export API: ``announced_date_first`` caps at a
+    fixed partial set (~36 entries regardless of date) and ``published``
+    reflects original submission, not announcement. The queried semantic is
+    therefore "papers originally submitted on date X".
+
+    The legacy API paginates inconsistently across calls, so entries are
+    merged across repeated attempts (keyed by arxiv id) until the result set
+    stabilizes.
     """
     compact_date = target_date.replace("-", "")
     query = (
         f"cat:{ARXIV_CATEGORY} AND "
-        f"announced_date_first:[{compact_date}0000 TO {compact_date}2359]"
+        f"submittedDate:[{compact_date}0000 TO {compact_date}2359]"
     )
     search = arxiv_api.Search(
         query=query,
@@ -109,15 +121,21 @@ def _fetch_api_entries_for_date(target_date: str) -> list[dict[str, str]]:
         sort_by=arxiv_api.SortCriterion.SubmittedDate,
         sort_order=arxiv_api.SortOrder.Ascending,
     )
-    return [
-        {
-            "arxiv_id": _normalize_arxiv_id(result.entry_id),
-            "title": result.title,
-            "link": f"https://arxiv.org/abs/{result.entry_id}",
-            "abstract": result.summary,
-        }
-        for result in arxiv_api.Client().results(search)
-    ]
+
+    merged: dict[str, dict[str, str]] = {}
+    previous_count = -1
+    for _ in range(3):
+        for result in arxiv_api.Client().results(search):
+            merged[_normalize_arxiv_id(result.entry_id)] = {
+                "arxiv_id": _normalize_arxiv_id(result.entry_id),
+                "title": result.title,
+                "link": f"https://arxiv.org/abs/{result.entry_id}",
+                "abstract": result.summary,
+            }
+        if len(merged) == previous_count:
+            break
+        previous_count = len(merged)
+    return list(merged.values())
 
 
 def _sync_date(target_date: str) -> int:
@@ -152,22 +170,23 @@ def _sync_date(target_date: str) -> int:
             })
             offset += 1
 
-    db.upsert_papers(target_date, rows)
+    db.sync_date(target_date, rows, EMBEDDING_VERSION)
     return len(rows)
 
 
 def _ensure_synced(target_date: str) -> None:
-    """Ensure a date's papers are stored, syncing once per date per process.
+    """Ensure a date's papers are stored with the current embedding version.
 
-    A date is only marked as synced once papers actually landed in the
-    database, so a transient fetch failure is retried on the next call.
+    A date is re-synced when it was never synced, when the stored embedding
+    version differs from the current one (chunking or embedding model
+    changed), or after a transient fetch failure that left no papers behind.
     """
     _ensure_db_ready()
     if target_date in _synced_dates:
         return
-    if not db.date_has_papers(target_date):
+    if db.get_sync_version(target_date) != EMBEDDING_VERSION:
         _sync_date(target_date)
-    if db.date_has_papers(target_date):
+    if db.date_has_chunks(target_date):
         _synced_dates.add(target_date)
 
 

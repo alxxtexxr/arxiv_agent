@@ -37,6 +37,12 @@ CREATE TABLE IF NOT EXISTS arxiv_paper_chunks (
     UNIQUE (arxiv_id, chunk_idx)
 );
 
+CREATE TABLE IF NOT EXISTS arxiv_sync_meta (
+    published_date DATE PRIMARY KEY,
+    embedding_version TEXT NOT NULL,
+    synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_arxiv_papers_date
     ON arxiv_papers (published_date);
 
@@ -54,12 +60,26 @@ ON CONFLICT (arxiv_id) DO UPDATE SET
     published_date = EXCLUDED.published_date
 """
 
+DELETE_CHUNKS_SQL = """
+DELETE FROM arxiv_paper_chunks
+WHERE arxiv_id IN (SELECT arxiv_id FROM arxiv_papers WHERE published_date = %s)
+"""
+
 UPSERT_CHUNK_SQL = """
 INSERT INTO arxiv_paper_chunks (arxiv_id, chunk_idx, content, embedding)
 VALUES (%s, %s, %s, %s)
-ON CONFLICT (arxiv_id, chunk_idx) DO UPDATE SET
-    content = EXCLUDED.content,
-    embedding = EXCLUDED.embedding
+"""
+
+UPSERT_SYNC_META_SQL = """
+INSERT INTO arxiv_sync_meta (published_date, embedding_version)
+VALUES (%s, %s)
+ON CONFLICT (published_date) DO UPDATE SET
+    embedding_version = EXCLUDED.embedding_version,
+    synced_at = now()
+"""
+
+GET_SYNC_VERSION_SQL = """
+SELECT embedding_version FROM arxiv_sync_meta WHERE published_date = %s
 """
 
 SEARCH_SQL = """
@@ -74,6 +94,22 @@ LIMIT %s
 
 DATE_HAS_PAPERS_SQL = """
 SELECT EXISTS (SELECT 1 FROM arxiv_papers WHERE published_date = %s)
+"""
+
+DATE_HAS_CHUNKS_SQL = """
+SELECT EXISTS (
+    SELECT 1 FROM arxiv_paper_chunks c
+    JOIN arxiv_papers p ON p.arxiv_id = c.arxiv_id
+    WHERE p.published_date = %s
+)
+"""
+
+CLEANUP_ORPHAN_PAPERS_SQL = """
+DELETE FROM arxiv_papers
+WHERE published_date = %s
+  AND NOT EXISTS (
+      SELECT 1 FROM arxiv_paper_chunks c WHERE c.arxiv_id = arxiv_papers.arxiv_id
+  )
 """
 
 PAPERS_BY_DATE_SQL = """
@@ -110,11 +146,29 @@ def date_has_papers(published_date: str) -> bool:
         return cursor.fetchone()[0]
 
 
-def upsert_papers(published_date: str, rows: list[dict]) -> None:
-    """Idempotently upsert paper metadata and chunks for a date.
+def date_has_chunks(published_date: str) -> bool:
+    """Return whether any chunks are stored for the given date."""
+    with _connect() as connection, connection.cursor() as cursor:
+        cursor.execute(DATE_HAS_CHUNKS_SQL, (published_date,))
+        return cursor.fetchone()[0]
 
-    Both phases run in a single transaction so a partial failure cannot
-    leave metadata and chunks out of sync.
+
+def get_sync_version(published_date: str) -> str | None:
+    """Return the stored embedding version for a date, or None if unsynced."""
+    with _connect() as connection, connection.cursor() as cursor:
+        cursor.execute(GET_SYNC_VERSION_SQL, (published_date,))
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+
+def sync_date(published_date: str, rows: list[dict], embedding_version: str) -> None:
+    """Atomically sync a date's papers, chunks, and sync metadata.
+
+    Upserts paper metadata, replaces the date's chunks, and records the
+    embedding version that produced them. Chunks are deleted and re-inserted
+    (rather than upserted) so that a change in the chunking configuration
+    cannot leave stale chunks with old boundaries behind. All phases run in a
+    single transaction.
     """
     paper_params = [
         (
@@ -138,7 +192,10 @@ def upsert_papers(published_date: str, rows: list[dict]) -> None:
     with _connect() as connection, connection.transaction():
         with connection.cursor() as cursor:
             cursor.executemany(UPSERT_PAPER_SQL, paper_params)
+            cursor.execute(DELETE_CHUNKS_SQL, (published_date,))
             cursor.executemany(UPSERT_CHUNK_SQL, chunk_params)
+            cursor.execute(UPSERT_SYNC_META_SQL, (published_date, embedding_version))
+            cursor.execute(CLEANUP_ORPHAN_PAPERS_SQL, (published_date,))
 
 
 def search_by_date(published_date: str, query_vector: list[float], k: int) -> list[dict]:
