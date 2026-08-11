@@ -1,4 +1,4 @@
-"""arXiv paper tools and helpers."""
+"""bookmarked arXiv paper tools and helpers."""
 
 from pathlib import Path
 from typing import Any
@@ -8,12 +8,12 @@ from langchain.tools import tool
 
 from agent.utils import format_arxiv_paper
 
-SAVED_ARXIV_LINKS_FILE = Path(__file__).parent.parent / "data" / "saved_arxiv_links.txt"
+BOOKMARKED_ARXIV_LINKS_FILE = Path(__file__).parent.parent / "data" / "bookmarked_arxiv_links.txt"
 
-def _fetch_all() -> list[dict[str, Any]]:
-    """Fetch all saved arXiv papers based on the links in the saved_arxiv_links.txt file."""
+def _fetch_data() -> list[dict[str, Any]]:
+    """Fetch bookmarked arXiv papers from the links file."""
     
-    with open(SAVED_ARXIV_LINKS_FILE) as f:
+    with open(BOOKMARKED_ARXIV_LINKS_FILE) as f:
         links = [line.strip() for line in f if line.strip()]
 
     paper_ids = [link.rstrip("/").split("/")[-1].replace(".pdf", "") for link in links]
@@ -33,12 +33,12 @@ def _fetch_all() -> list[dict[str, Any]]:
     return papers
 
 @tool
-def get_saved_arxiv_papers() -> str:
-    """Get saved arXiv papers."""
+def get_bookmarked_arxiv_papers() -> str:
+    """Get all bookmarked arXiv papers."""
     
-    papers = _fetch_all()
+    papers = _fetch_data()
     if not papers:
-        return "No saved arXiv papers found."
+        return "No bookmarked arXiv papers found."
 
     return "\n\n".join(format_arxiv_paper(
         title=p["title"], 
@@ -47,12 +47,12 @@ def get_saved_arxiv_papers() -> str:
     ) for p in papers)
 
 @tool
-def search_saved_arxiv_paper(query: str) -> str:
-    """Search saved arXiv papers based on a query."""
+def search_bookmarked_arxiv_paper(query: str) -> str:
+    """Search bookmarked arXiv papers based on a query."""
     
-    papers = _fetch_all()
+    papers = _fetch_data()
     if not papers:
-        return "No saved arXiv papers found."
+        return "No bookmarked arXiv papers found."
     
     query_lower = query.lower()
     matches = [
@@ -60,6 +60,6 @@ def search_saved_arxiv_paper(query: str) -> str:
         if query_lower in p["title"].lower() or query_lower in p["abstract"].lower()
     ]
     if not matches:
-        return f"No saved arXiv papers match '{query}'."
+        return f"No bookmarked arXiv papers match '{query}'."
 
     return "\n\n".join(format_arxiv_paper(p) for p in matches)

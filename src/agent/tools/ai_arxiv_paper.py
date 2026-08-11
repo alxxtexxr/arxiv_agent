@@ -95,7 +95,7 @@ def _get_compression_retriever(top_n=5) -> ContextualCompressionRetriever:
     
     return compression_retriever
 
-def _recommend_query_based(query: str) -> list[str]:
+def _recommend_data_query_based(query: str) -> list[str]:
     """Recommend today's arXiv AI papers based on a query."""
     compression_retriever = _get_compression_retriever()
     retrieved_doc_splits = compression_retriever.invoke(query)
@@ -103,7 +103,7 @@ def _recommend_query_based(query: str) -> list[str]:
     retrieved_docs = [paper_docs[i] for i in retrieved_doc_indices]
     return retrieved_docs
 
-def _recommend_personalized() -> list[str]:
+def _recommend_data_personalized() -> list[str]:
     """Recommend today's arXiv AI papers based on personalized preferences."""
     # Placeholder for personalized recommendation logic
     # This could involve user profiles, past interactions, etc.
@@ -115,9 +115,9 @@ def recommend_todays_arxiv_ai_papers(mode: Literal["query_based", "personalized"
     retrieved_docs = []
     if mode == "query_based":
         assert query is not None, "Query must be provided for query-based recommendations."
-        retrieved_docs = _recommend_query_based(query)
+        retrieved_docs = _recommend_data_query_based(query)
     elif mode == "personalized":
-        retrieved_docs = _recommend_personalized()
+        retrieved_docs = _recommend_data_personalized()
     else:
         raise ValueError("Invalid mode. Please choose 'query_based' or 'personalized'.")
     return "\n\n".join(retrieved_docs)

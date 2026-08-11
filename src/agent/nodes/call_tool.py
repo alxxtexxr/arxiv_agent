@@ -16,8 +16,8 @@ def call_tool(state: MessagesState) -> Dict[str, Any]:
     
     # Validate that only one tool call from the unique set is present
     unique_tool_names = set([
-        "get_saved_arxiv_papers", 
-        "search_saved_arxiv_paper", 
+        "get_bookmarked_arxiv_papers", 
+        "search_bookmarked_arxiv_paper", 
         "recommend_todays_arxiv_ai_papers",
     ])
     is_valid = sum(1 for item in tool_call_names if item in unique_tool_names) <= 1
