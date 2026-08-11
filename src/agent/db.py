@@ -48,6 +48,9 @@ ON CONFLICT (arxiv_id, chunk_idx) DO UPDATE SET
     embedding = EXCLUDED.embedding
 """
 
+# '<=>' computes cosine distance (smaller is better)
+# cosine distance = 1 - cosine similarity
+# score = 1 - cosine distance = cosine similarity
 SEARCH_SQL = """
 SELECT arxiv_id, chunk_idx, title, link, abstract, content,
        1 - (embedding <=> %s) AS score
