@@ -2,8 +2,7 @@
 
 A LangGraph agent that recommends arXiv papers for today or a specified date, based on bookmarked arXiv papers (personalized recommendations) or topics (query-based recommendations).
 
-<video src="static/arxiv_agent_demo.mp4" controls width="100%">
-Your browser does not support the video tag.
+<video src="https://res.cloudinary.com/dn3srgvqk/video/upload/v1786566488/arxiv_agent_demo_2x_izqxgo.mp4" controls="controls" autoplay loop playsinline style="max-width: 100%;">
 </video>
 
 *Note: The demo video runs at 2× speed for brevity.*
