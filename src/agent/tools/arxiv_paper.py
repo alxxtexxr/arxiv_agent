@@ -297,34 +297,41 @@ def _recommend_personalized_by_date(target_date: str) -> list[str]:
     ]
 
 
-def _recommend_by_date(
+@tool
+def recommend_arxiv_papers_by_date(
     target_date: str,
     mode: Literal["query_based", "personalized"],
     query: str | None = None,
-) -> list[str]:
-    """Recommend papers published on a date. Internal core for the tools."""
+) -> str:
+    """Recommend a date's arXiv papers based on either a query or the user's bookmarked papers."""
     _ensure_synced(target_date)
+    
     if mode == "query_based":
-        assert query is not None, "Query must be provided for query-based recommendations."
-        return _recommend_query_based_by_date(target_date, query)
+        if query is None:
+            return "Query must be provided for query-based recommendations."
+        retrieved_docs = _recommend_query_based_by_date(target_date, query)
+        if not retrieved_docs:
+            return "No matching papers found for query."
+        return "\n\n".join(retrieved_docs)
+        
     if mode == "personalized":
-        return _recommend_personalized_by_date(target_date)
-    raise ValueError("Invalid mode. Please choose 'query_based' or 'personalized'.")
+        retrieved_docs = _recommend_personalized_by_date(target_date)
+        if not retrieved_docs:
+            return "No matching papers found for bookmarked papers."
+        return "\n\n".join(retrieved_docs)
+    
+    return "Invalid mode. Please choose 'query_based' or 'personalized'."
 
 
 @tool
 def recommend_todays_arxiv_papers(mode: Literal["query_based", "personalized"], query: str | None = None) -> str:
     """Recommend today's arXiv papers based on either a query or the user's bookmarked papers."""
     try:
-        retrieved_docs = _recommend_by_date(date_cls.today().isoformat(), mode, query)
+        return recommend_arxiv_papers_by_date.invoke(
+            input={"target_date": date_cls.today().isoformat(), "mode": mode, "query": query}
+        )
     except Exception as exc:  # pragma: no cover - defensive for server runs
         return f"Recommendation failed: {exc}"
-
-    if not retrieved_docs:
-        if mode == "query_based":
-            return "No matching papers found for today."
-        return "No bookmarked papers found to base personalized recommendations on."
-    return "\n\n".join(retrieved_docs)
 
 
 # Test the tool function
