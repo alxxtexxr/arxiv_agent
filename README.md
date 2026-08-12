@@ -2,8 +2,7 @@
 
 A LangGraph agent that recommends arXiv papers for today or a specified date, based on bookmarked arXiv papers (personalized recommendations) or topics (query-based recommendations).
 
-<video src="https://res.cloudinary.com/dn3srgvqk/video/upload/v1786566488/arxiv_agent_demo_2x_izqxgo.mp4" controls="controls" autoplay loop playsinline style="max-width: 100%;">
-</video>
+https://github.com/user-attachments/assets/e08d41aa-5a73-41e0-8637-c7ce12eb8a18
 
 *Note: The demo video runs at 2× speed for brevity.*
 
@@ -30,7 +29,7 @@ uv sync
 cp .env.example .env
 ```
 
-4. Set your LangSmith API key, OpenAI API key, and PosgreSQL database URL. Follow [these instructions](https://docs.langchain.com/langsmith/create-account-api-key) to get the LangSmith API key and [these instructions](https://developers.openai.com/api/docs/quickstart#create-and-export-an-api-key) to get the OpenAI API key. Optionally, update the OpenAI model settings.
+4. Set your LangSmith API key, OpenAI API key, and PostgreSQL database URL. Follow [these instructions](https://docs.langchain.com/langsmith/create-account-api-key) to get the LangSmith API key and [these instructions](https://developers.openai.com/api/docs/quickstart#create-and-export-an-api-key) to get the OpenAI API key. Optionally, update the OpenAI model settings.
 
 ```dotenv
 # .env
