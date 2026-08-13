@@ -1,7 +1,7 @@
 [project]
 name = "arxiv_agent"
 version = "0.0.1"
-description = "A LangGraph agent that recommends arXiv papers for today or a specified date, based on bookmarked arXiv papers (personalized recommendations) or topics (query-based recommendations)."
+description = "A LangGraph AI agent that recommends arXiv papers for today or a specified date, based on bookmarked arXiv papers (personalized recommendations) or topics (query-based recommendations)."
 authors = [
     { name = "alxxtexxr", email = "42492971+alxxtexxr@users.noreply.github.com" },
 ]

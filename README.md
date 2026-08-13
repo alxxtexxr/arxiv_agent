@@ -1,6 +1,6 @@
 # arXiv Agent
 
-A LangGraph agent that recommends arXiv papers for today or a specified date, based on bookmarked arXiv papers (personalized recommendations) or topics (query-based recommendations).
+A LangGraph AI agent that recommends arXiv papers for today or a specified date, based on bookmarked arXiv papers (personalized recommendations) or topics (query-based recommendations).
 
 https://github.com/user-attachments/assets/e08d41aa-5a73-41e0-8637-c7ce12eb8a18
 
