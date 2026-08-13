@@ -43,10 +43,10 @@ MODEL_NAME="gpt-5.6-luna"
 MODEL_REASONING_EFFORT="none"
 ```
 
-5. Create `src/agent/data/bookmarked_arxiv_links.txt` by copying `src/agent/data/bookmarked_arxiv_links.example.txt`. Then, update the file with the arXiv paper links for the bookmarks you want to use for personalized recommendations.
+5. Create `src/arxiv_agent/data/bookmarked_arxiv_links.txt` by copying `src/arxiv_agent/data/bookmarked_arxiv_links.example.txt`. Then, update the file with the arXiv paper links for the bookmarks you want to use for personalized recommendations.
 
 ```bash
-cp src/agent/data/bookmarked_arxiv_links.example.txt src/agent/data/bookmarked_arxiv_links.txt
+cp src/arxiv_agent/data/bookmarked_arxiv_links.example.txt src/arxiv_agent/data/bookmarked_arxiv_links.txt
 ```
 
 6. Start the LangGraph server. You should be automatically redirected to LangSmith Studio, where you can start chatting with the agent.

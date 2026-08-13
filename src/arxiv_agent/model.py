@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 
-from agent.tools import tools
+from arxiv_agent.tools import tools
 
 load_dotenv() # Load environment variables from .env file
 

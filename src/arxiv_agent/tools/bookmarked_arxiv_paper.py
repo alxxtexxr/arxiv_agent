@@ -6,7 +6,7 @@ from typing import Any
 import arxiv
 from langchain.tools import tool
 
-from agent.utils import format_arxiv_paper
+from arxiv_agent.utils import format_arxiv_paper
 
 BOOKMARKED_ARXIV_LINKS_FILE = Path(__file__).parent.parent / "data" / "bookmarked_arxiv_links.txt"
 

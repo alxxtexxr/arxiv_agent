@@ -5,7 +5,7 @@ from typing import Any, Dict
 from langgraph.graph import MessagesState
 from langchain.messages import ToolMessage
 
-from agent.tools import tool_by_name
+from arxiv_agent.tools import tool_by_name
 
 def call_tool(state: MessagesState) -> Dict[str, Any]:
     """Call the tool with the current state and return the new messages."""

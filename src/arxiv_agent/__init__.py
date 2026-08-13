@@ -3,6 +3,6 @@
 This module defines a custom graph.
 """
 
-from agent.graph import graph
+from arxiv_agent.graph import graph
 
 __all__ = ["graph"]

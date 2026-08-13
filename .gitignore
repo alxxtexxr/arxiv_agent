@@ -163,7 +163,7 @@ cython_debug/
 .langgraph_api/
 
 # Personal bookmarks (kept out of git; the .example.txt template is tracked)
-src/agent/data/bookmarked_arxiv_links.txt
+src/arxiv_agent/data/bookmarked_arxiv_links.txt
 
 # Miscellaneous
 opencode.jsonc

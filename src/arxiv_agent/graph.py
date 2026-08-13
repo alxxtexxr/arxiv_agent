@@ -2,7 +2,7 @@
 
 from langgraph.graph import StateGraph, MessagesState
 
-from agent.nodes import call_model, call_tool, call_tool_or_stop
+from arxiv_agent.nodes import call_model, call_tool, call_tool_or_stop
 
 graph = (
     StateGraph(MessagesState)
