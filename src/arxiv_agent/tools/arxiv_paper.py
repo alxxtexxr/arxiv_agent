@@ -26,8 +26,8 @@ from langchain_core.retrievers import BaseRetriever
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from agent import db
-from agent.utils import format_arxiv_paper
+from arxiv_agent import db
+from arxiv_agent.utils import format_arxiv_paper
 
 load_dotenv()
 
@@ -252,7 +252,7 @@ _bookmark_cache: dict[str, list[dict[str, Any]]] = {}
 
 def _fetch_bookmarked_papers() -> list[dict[str, Any]]:
     """Fetch bookmarked papers, cached by links-file content hash."""
-    from agent.tools import bookmarked_arxiv_paper
+    from arxiv_agent.tools import bookmarked_arxiv_paper
 
     links_file = bookmarked_arxiv_paper.BOOKMARKED_ARXIV_LINKS_FILE
     cache_key = hashlib.sha1(links_file.read_text().encode()).hexdigest()

@@ -1,6 +1,6 @@
 import pytest
 
-from agent import graph
+from arxiv_agent import graph
 
 pytestmark = pytest.mark.anyio
 
