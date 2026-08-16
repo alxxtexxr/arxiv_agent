@@ -1,0 +1,3 @@
+[submodule "arxiv-agent-chat-ui"]
+	path = arxiv-agent-chat-ui
+	url = https://github.com/alxxtexxr/arxiv-agent-chat-ui.git
