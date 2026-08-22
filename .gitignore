@@ -164,6 +164,7 @@ cython_debug/
 
 # Personal bookmarks (kept out of git; the .example.txt template is tracked)
 src/arxiv_agent/data/bookmarked_arxiv_urls.txt
+src/arxiv_agent/data/bookmarked_arxiv_urls_from_github_*.txt
 
 # Miscellaneous
 opencode.jsonc
