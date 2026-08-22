@@ -45,7 +45,7 @@ def get_bookmarked_arxiv_papers() -> str:
     ) for p in papers)
 
 @tool
-def search_bookmarked_arxiv_paper(query: str) -> str:
+def search_bookmarked_arxiv_papers(query: str) -> str:
     """Search bookmarked arXiv papers based on a query."""
     papers = _fetch_papers()
     if not papers:
