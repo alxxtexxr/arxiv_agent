@@ -254,7 +254,7 @@ def _fetch_bookmarked_papers() -> list[dict[str, Any]]:
     """Fetch bookmarked papers, cached by links-file content hash."""
     from arxiv_agent.tools import bookmarked_arxiv_paper
 
-    links_file = bookmarked_arxiv_paper.BOOKMARKED_ARXIV_LINKS_FILE
+    links_file = bookmarked_arxiv_paper.BOOKMARKED_ARXIV_URLS_FILE
     cache_key = hashlib.sha1(links_file.read_text().encode()).hexdigest()
     if cache_key not in _bookmark_cache:
         _bookmark_cache.clear()
