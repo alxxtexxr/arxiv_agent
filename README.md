@@ -33,7 +33,7 @@ cp .env.example .env
 
 ```dotenv
 OPENAI_API_KEY="sk-..."
-DATABASE_URL="postgresql://{username}:{password}@localhost:5432/arxiv_agent"
+ARXIV_AGENT_POSTGRES_URI="postgresql://{username}:{password}@localhost:5432/arxiv_agent"
 
 MODEL_PROVIDER="openai"
 MODEL_NAME="gpt-5.6-luna"
