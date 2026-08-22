@@ -5,6 +5,7 @@ the arXiv API), stores the chunks and their bge-m3 embeddings in PostgreSQL
 (pgvector), and recommends papers via retrieval plus cross-encoder reranking.
 """
 
+import os
 import hashlib
 import re
 from builtins import sorted
@@ -31,7 +32,6 @@ from arxiv_agent.utils import format_arxiv_paper
 
 load_dotenv()
 
-ARXIV_CATEGORY = "cs.AI"
 CHUNK_SIZE = 250
 CHUNK_OVERLAP = 50
 EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
@@ -85,7 +85,7 @@ def _normalize_arxiv_id(raw_id: str) -> str:
 
 def _fetch_feed_entries() -> list[dict[str, str]]:
     """Fetch today's papers from the arXiv RSS feed."""
-    feed = feedparser.parse(f"https://rss.arxiv.org/rss/{ARXIV_CATEGORY}")
+    feed = feedparser.parse(f"https://rss.arxiv.org/rss/{os.environ["ARXIV_RECOMMENDATION_CATEGORY"]}")
     return [
         {
             "arxiv_id": _normalize_arxiv_id(entry.link),
@@ -112,7 +112,7 @@ def _fetch_api_entries_for_date(target_date: str) -> list[dict[str, str]]:
     """
     compact_date = target_date.replace("-", "")
     query = (
-        f"cat:{ARXIV_CATEGORY} AND "
+        f"cat:{os.environ["ARXIV_RECOMMENDATION_CATEGORY"]} AND "
         f"submittedDate:[{compact_date}0000 TO {compact_date}2359]"
     )
     search = arxiv_api.Search(
@@ -258,7 +258,7 @@ def _fetch_bookmarked_papers() -> list[dict[str, Any]]:
     cache_key = hashlib.sha1(links_file.read_text().encode()).hexdigest()
     if cache_key not in _bookmark_cache:
         _bookmark_cache.clear()
-        _bookmark_cache[cache_key] = bookmarked_arxiv_paper._fetch_data()
+        _bookmark_cache[cache_key] = bookmarked_arxiv_paper._fetch_papers()
     return _bookmark_cache[cache_key]
 
 

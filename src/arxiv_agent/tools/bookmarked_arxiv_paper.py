@@ -10,7 +10,7 @@ from arxiv_agent.utils import format_arxiv_paper
 
 BOOKMARKED_ARXIV_URLS_FILE = Path(__file__).parent.parent / "data" / "bookmarked_arxiv_urls.txt"
 
-def _fetch_data() -> list[dict[str, Any]]:
+def _fetch_papers() -> list[dict[str, Any]]:
     """Fetch bookmarked arXiv papers from the links file."""
     with open(BOOKMARKED_ARXIV_URLS_FILE) as f:
         links = [line.strip() for line in f if line.strip()]
@@ -34,7 +34,7 @@ def _fetch_data() -> list[dict[str, Any]]:
 @tool
 def get_bookmarked_arxiv_papers() -> str:
     """Get all bookmarked arXiv papers."""
-    papers = _fetch_data()
+    papers = _fetch_papers()
     if not papers:
         return "No bookmarked arXiv papers found."
 
@@ -47,7 +47,7 @@ def get_bookmarked_arxiv_papers() -> str:
 @tool
 def search_bookmarked_arxiv_paper(query: str) -> str:
     """Search bookmarked arXiv papers based on a query."""
-    papers = _fetch_data()
+    papers = _fetch_papers()
     if not papers:
         return "No bookmarked arXiv papers found."
     
