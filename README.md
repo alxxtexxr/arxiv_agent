@@ -29,7 +29,7 @@ uv sync
 cp .env.example .env
 ```
 
-4. Set your PostgreSQL database URI and [OpenAI API key](https://developers.openai.com/api/docs/quickstart#create-and-export-an-api-key) in `.env`. Optionally, update the OpenAI model settings.
+4. Set your PostgreSQL database URI and [OpenAI API key](https://developers.openai.com/api/docs/quickstart#create-and-export-an-api-key) in `.env`. Optionally, update the OpenAI model settings and arXiv recommendation category.
 
 ```dotenv
 ARXIV_AGENT_POSTGRES_URI="postgresql://{username}:{password}@localhost:5432/arxiv_agent"
@@ -38,6 +38,8 @@ OPENAI_API_KEY="sk-..."
 MODEL_PROVIDER="openai"
 MODEL_NAME="gpt-5.6-luna"
 MODEL_REASONING_EFFORT="max"
+
+ARXIV_RECOMMENDATION_CATEGORY="cs.AI"
 ```
 
 5. Create `src/arxiv_agent/data/bookmarked_arxiv_urls.txt` by copying `src/arxiv_agent/data/bookmarked_arxiv_urls.example.txt`. Then, update the file with the arXiv paper links for the bookmarks you want to use for personalized recommendations.
