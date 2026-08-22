@@ -29,18 +29,15 @@ uv sync
 cp .env.example .env
 ```
 
-4. Set your LangSmith API key, OpenAI API key, and PostgreSQL database URL. Follow [these instructions](https://docs.langchain.com/langsmith/create-account-api-key) to get the LangSmith API key and [these instructions](https://developers.openai.com/api/docs/quickstart#create-and-export-an-api-key) to get the OpenAI API key. Optionally, update the OpenAI model settings.
+4. Set your [OpenAI API key](https://developers.openai.com/api/docs/quickstart#create-and-export-an-api-key) and PostgreSQL database URL in `.env`. Optionally, update the OpenAI model settings.
 
 ```dotenv
-# .env
-
-LANGSMITH_API_KEY="lsv2_..."
 OPENAI_API_KEY="sk-..."
 DATABASE_URL="postgresql://{username}:{password}@localhost:5432/arxiv_agent"
 
 MODEL_PROVIDER="openai"
 MODEL_NAME="gpt-5.6-luna"
-MODEL_REASONING_EFFORT="none"
+MODEL_REASONING_EFFORT="max"
 ```
 
 5. Create `src/arxiv_agent/data/bookmarked_arxiv_links.txt` by copying `src/arxiv_agent/data/bookmarked_arxiv_links.example.txt`. Then, update the file with the arXiv paper links for the bookmarks you want to use for personalized recommendations.
@@ -55,6 +52,6 @@ cp src/arxiv_agent/data/bookmarked_arxiv_links.example.txt src/arxiv_agent/data/
 uv run langgraph dev
 ```
 
-## TODO
+<!-- ## TODO
 
-- [ ] Add Docker support for the application.
+- [ ] Add Docker support for the application. -->
