@@ -82,6 +82,11 @@ GET_SYNC_VERSION_SQL = """
 SELECT embedding_version FROM arxiv_sync_meta WHERE published_date = %s
 """
 
+MOST_RECENT_DATE_SQL = """
+SELECT published_date FROM arxiv_sync_meta
+ORDER BY published_date DESC LIMIT 1
+"""
+
 SEARCH_SQL = """
 SELECT c.arxiv_id, c.chunk_idx, p.title, p.url, p.abstract, c.content,
        1 - (c.embedding <=> %s) AS score
@@ -170,6 +175,14 @@ def get_sync_version(published_date: str) -> str | None:
         cursor.execute(GET_SYNC_VERSION_SQL, (published_date,))
         row = cursor.fetchone()
         return row[0] if row else None
+
+
+def get_most_recent_date() -> str | None:
+    """Return the most recent date with stored papers, or None."""
+    with _connect() as connection, connection.cursor() as cursor:
+        cursor.execute(MOST_RECENT_DATE_SQL)
+        row = cursor.fetchone()
+        return row[0].isoformat() if row and row[0] else None
 
 
 def sync_date(published_date: str, rows: list[dict], embedding_version: str) -> None:

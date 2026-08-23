@@ -10,6 +10,7 @@ import os
 import re
 from builtins import sorted
 from datetime import date as date_cls
+from datetime import datetime
 from typing import Any, Literal
 
 import arxiv as arxiv_api
@@ -298,6 +299,23 @@ def _recommend_personalized_by_date(target_date: str) -> list[str]:
     ]
 
 
+def _empty_date_message(target_date: str, most_recent_date: str | None) -> str:
+    """Explain an empty arXiv corpus for a date, using universal (UTC) time."""
+    target = datetime.strptime(target_date, "%Y-%m-%d")
+    weekday = target.strftime("%A")
+    if target.weekday() >= 5:
+        explanation = (
+            "arXiv announces papers Sunday–Thursday in America/New_York "
+            "(Monday–Friday in UTC), so UTC weekend dates have no announcements. "
+        )
+    else:
+        explanation = "arXiv announcements for this date have not been generated yet. "
+    message = f"No papers for {target_date} (UTC, {weekday}). {explanation}"
+    if most_recent_date:
+        message += f"Last date with papers: {most_recent_date}."
+    return message
+
+
 @tool
 def recommend_arxiv_papers_by_date(
     target_date: str,
@@ -306,7 +324,10 @@ def recommend_arxiv_papers_by_date(
 ) -> str:
     """Recommend a date's arXiv papers based on either a query or the user's bookmarked papers."""
     _ensure_synced(target_date)
-    
+
+    if not db.date_has_chunks(target_date):
+        return _empty_date_message(target_date, db.get_most_recent_date())
+
     if mode == "query_based":
         if query is None:
             return "Query must be provided for query-based recommendations."
