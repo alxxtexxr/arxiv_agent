@@ -19,13 +19,13 @@ def _get_bookmarked_urls_files() -> list[Path]:
     return sorted(files, key=lambda p: (0 if p.name == "bookmarked_arxiv_urls.txt" else 1, p.name))
 
 
-def _fetch_papers() -> list[dict[str, Any]]:
+def _fetch_papers(with_abstract: bool=False) -> list[dict[str, Any]]:
     """Fetch bookmarked arXiv papers from all bookmark files."""
     files = _get_bookmarked_urls_files()
     if not files:
         return []
 
-    links: list[str] = []
+    urls: list[str] = []
     seen_ids: set[str] = set()
     for file in files:
         for line in file.read_text().splitlines():
@@ -35,41 +35,60 @@ def _fetch_papers() -> list[dict[str, Any]]:
             paper_id = line.rstrip("/").split("/")[-1].replace(".pdf", "")
             if paper_id not in seen_ids:
                 seen_ids.add(paper_id)
-                links.append(line)
+                urls.append(line)
 
-    paper_ids = [link.rstrip("/").split("/")[-1].replace(".pdf", "") for link in links]
+    paper_ids = [url.rstrip("/").split("/")[-1].replace(".pdf", "") for url in urls]
 
     client = arxiv.Client()
     search = arxiv.Search(id_list=paper_ids)
 
-    papers = [
-        {
-            "title": r.title,
-            "link": f"https://arxiv.org/abs/{r.entry_id}",
-            "abstract": r.summary,
-        }
-        for r in client.results(search)
-    ]
+    papers = []
+    for r in client.results(search):
+        if with_abstract:
+            papers.append({
+                "title": r.title,
+                "url": f"https://arxiv.org/abs/{r.entry_id}",
+                "abstract": r.summary,
+            })
+        else:
+            papers.append({
+                "title": r.title,
+                "url": f"https://arxiv.org/abs/{r.entry_id}",
+            })
 
     return papers
 
 @tool
-def get_bookmarked_arxiv_papers() -> str:
-    """Get all bookmarked arXiv papers."""
-    papers = _fetch_papers()
+def get_bookmarked_arxiv_papers(with_abstract: bool=False) -> str:
+    """Get bookmarked arXiv papers.
+
+    Args:
+        with_abstract: Whether to include abstracts in the output. Defaults to False.
+    
+    Returns:
+        A string containing the bookmarked arXiv papers.
+    """
+    papers = _fetch_papers(with_abstract)
     if not papers:
         return "No bookmarked arXiv papers found."
 
     return "\n\n".join(format_arxiv_paper(
         title=p["title"], 
-        link=p["link"], 
-        abstract=p["abstract"],
+        url=p["url"], 
+        abstract=p["abstract"] if with_abstract else None,
     ) for p in papers)
 
 @tool
 def search_bookmarked_arxiv_papers(query: str) -> str:
-    """Search bookmarked arXiv papers based on a query."""
-    papers = _fetch_papers()
+    """Search for bookmarked arXiv papers by title or abstract.
+
+    Args:
+        query: The query to search for.
+    
+    Returns:
+        A string containing the search results.
+    """
+    papers = _fetch_papers(with_abstract=True)
     if not papers:
         return "No bookmarked arXiv papers found."
     
@@ -87,6 +106,6 @@ def search_bookmarked_arxiv_papers(query: str) -> str:
 if __name__ == "__main__":
     from pprint import pprint
     
-    data = _fetch_papers()
+    data = _fetch_papers(with_abstract=True)
     
     pprint(data)

@@ -88,9 +88,9 @@ def _fetch_feed_entries() -> list[dict[str, str]]:
     feed = feedparser.parse(f"https://rss.arxiv.org/rss/{os.environ["ARXIV_RECOMMENDATION_CATEGORY"]}")
     return [
         {
-            "arxiv_id": _normalize_arxiv_id(entry.link),
+            "arxiv_id": _normalize_arxiv_id(entry.url),
             "title": entry.title,
-            "link": entry.link,
+            "url": entry.url,
             "abstract": entry.summary.split("Abstract:", 1)[-1].strip(),
         }
         for entry in feed.entries
@@ -129,7 +129,7 @@ def _fetch_api_entries_for_date(target_date: str) -> list[dict[str, str]]:
             merged[_normalize_arxiv_id(result.entry_id)] = {
                 "arxiv_id": _normalize_arxiv_id(result.entry_id),
                 "title": result.title,
-                "link": f"https://arxiv.org/abs/{result.entry_id}",
+                "url": f"https://arxiv.org/abs/{result.entry_id}",
                 "abstract": result.summary,
             }
         if len(merged) == previous_count:
@@ -148,7 +148,7 @@ def _sync_date(target_date: str) -> int:
         return 0
 
     paper_docs = [
-        format_arxiv_paper(title=e["title"], link=e["link"], abstract=e["abstract"])
+        format_arxiv_paper(title=e["title"], url=e["url"], abstract=e["abstract"])
         for e in entries
     ]
     chunks_per_paper = [text_splitter.split_text(doc) for doc in paper_docs]
@@ -163,7 +163,7 @@ def _sync_date(target_date: str) -> int:
                 "arxiv_id": entry["arxiv_id"],
                 "chunk_idx": chunk_idx,
                 "title": entry["title"],
-                "link": entry["link"],
+                "url": entry["url"],
                 "abstract": entry["abstract"],
                 "content": chunk_text,
                 "embedding": flat_embeddings[offset],
@@ -206,7 +206,7 @@ class _ArxivDateRetriever(BaseRetriever):
                     "arxiv_id": row["arxiv_id"],
                     "chunk_idx": row["chunk_idx"],
                     "title": row["title"],
-                    "link": row["link"],
+                    "url": row["url"],
                     "abstract": row["abstract"],
                 },
             )
@@ -234,7 +234,7 @@ def _dedupe_chunks(docs: list[Document]) -> list[str]:
         seen.add(paper_id)
         papers.append(format_arxiv_paper(
             title=doc.metadata["title"],
-            link=doc.metadata["link"],
+            url=doc.metadata["url"],
             abstract=doc.metadata["abstract"],
         ))
     return papers
@@ -251,7 +251,7 @@ _bookmark_cache: dict[str, list[dict[str, Any]]] = {}
 
 
 def _fetch_bookmarked_papers() -> list[dict[str, Any]]:
-    """Fetch bookmarked papers, cached by combined links-files content hash."""
+    """Fetch bookmarked papers, cached by combined urls-files content hash."""
     from arxiv_agent.tools import bookmarked_arxiv_papers
 
     files = bookmarked_arxiv_papers._get_bookmarked_urls_files()
@@ -259,7 +259,7 @@ def _fetch_bookmarked_papers() -> list[dict[str, Any]]:
     cache_key = hashlib.sha1(combined.encode()).hexdigest()
     if cache_key not in _bookmark_cache:
         _bookmark_cache.clear()
-        _bookmark_cache[cache_key] = bookmarked_arxiv_papers._fetch_papers()
+        _bookmark_cache[cache_key] = bookmarked_arxiv_papers._fetch_papers(with_abstract=True)
     return _bookmark_cache[cache_key]
 
 
@@ -273,7 +273,7 @@ def _recommend_personalized_by_date(target_date: str) -> list[str]:
     for paper in bookmarked_papers[:MAX_BOOKMARKS_PROCESSED]:
         query = format_arxiv_paper(
             title=paper["title"],
-            link=paper["link"],
+            url=paper["url"],
             abstract=paper["abstract"],
         )
         compression_retriever = _get_compression_retriever(target_date)
@@ -291,7 +291,7 @@ def _recommend_personalized_by_date(target_date: str) -> list[str]:
     return [
         format_arxiv_paper(
             title=papers_by_id[paper_id]["title"],
-            link=papers_by_id[paper_id]["link"],
+            url=papers_by_id[paper_id]["url"],
             abstract=papers_by_id[paper_id]["abstract"],
         )
         for paper_id in ranked_ids[:MAX_RECOMMENDATIONS]
