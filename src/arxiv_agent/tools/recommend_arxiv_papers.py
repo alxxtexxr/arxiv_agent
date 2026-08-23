@@ -5,8 +5,8 @@ the arXiv API), stores the chunks and their bge-m3 embeddings in PostgreSQL
 (pgvector), and recommends papers via retrieval plus cross-encoder reranking.
 """
 
-import os
 import hashlib
+import os
 import re
 from builtins import sorted
 from datetime import date as date_cls
@@ -251,14 +251,15 @@ _bookmark_cache: dict[str, list[dict[str, Any]]] = {}
 
 
 def _fetch_bookmarked_papers() -> list[dict[str, Any]]:
-    """Fetch bookmarked papers, cached by links-file content hash."""
-    from arxiv_agent.tools import bookmarked_arxiv_paper
+    """Fetch bookmarked papers, cached by combined links-files content hash."""
+    from arxiv_agent.tools import bookmarked_arxiv_papers
 
-    links_file = bookmarked_arxiv_paper.BOOKMARKED_ARXIV_URLS_FILE
-    cache_key = hashlib.sha1(links_file.read_text().encode()).hexdigest()
+    files = bookmarked_arxiv_papers._get_bookmarked_urls_files()
+    combined = "".join(f.read_text() for f in files)
+    cache_key = hashlib.sha1(combined.encode()).hexdigest()
     if cache_key not in _bookmark_cache:
         _bookmark_cache.clear()
-        _bookmark_cache[cache_key] = bookmarked_arxiv_paper._fetch_papers()
+        _bookmark_cache[cache_key] = bookmarked_arxiv_papers._fetch_papers()
     return _bookmark_cache[cache_key]
 
 

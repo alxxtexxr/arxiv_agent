@@ -8,12 +8,34 @@ from langchain.tools import tool
 
 from arxiv_agent.utils import format_arxiv_paper
 
-BOOKMARKED_ARXIV_URLS_FILE = Path(__file__).parent.parent / "data" / "bookmarked_arxiv_urls.txt"
+BOOKMARKED_ARXIV_DATA_DIR = Path(__file__).parent.parent / "data"
+
+
+def _get_bookmarked_urls_files() -> list[Path]:
+    """Return all bookmarked URL files, local file first, excluding examples."""
+    files = [
+        p for p in BOOKMARKED_ARXIV_DATA_DIR.glob("bookmarked_arxiv_urls*.txt") if "example" not in p.name
+    ]
+    return sorted(files, key=lambda p: (0 if p.name == "bookmarked_arxiv_urls.txt" else 1, p.name))
+
 
 def _fetch_papers() -> list[dict[str, Any]]:
-    """Fetch bookmarked arXiv papers from the links file."""
-    with open(BOOKMARKED_ARXIV_URLS_FILE) as f:
-        links = [line.strip() for line in f if line.strip()]
+    """Fetch bookmarked arXiv papers from all bookmark files."""
+    files = _get_bookmarked_urls_files()
+    if not files:
+        return []
+
+    links: list[str] = []
+    seen_ids: set[str] = set()
+    for file in files:
+        for line in file.read_text().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            paper_id = line.rstrip("/").split("/")[-1].replace(".pdf", "")
+            if paper_id not in seen_ids:
+                seen_ids.add(paper_id)
+                links.append(line)
 
     paper_ids = [link.rstrip("/").split("/")[-1].replace(".pdf", "") for link in links]
 
@@ -60,3 +82,11 @@ def search_bookmarked_arxiv_papers(query: str) -> str:
         return f"No bookmarked arXiv papers match '{query}'."
 
     return "\n\n".join(format_arxiv_paper(p) for p in matches)
+
+# Test the function
+if __name__ == "__main__":
+    from pprint import pprint
+    
+    data = _fetch_papers()
+    
+    pprint(data)
