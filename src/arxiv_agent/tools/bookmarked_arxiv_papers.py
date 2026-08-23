@@ -100,7 +100,7 @@ def search_bookmarked_arxiv_papers(query: str) -> str:
     if not matches:
         return f"No bookmarked arXiv papers match '{query}'."
 
-    return "\n\n".join(format_arxiv_paper(p) for p in matches)
+    return "\n\n".join(format_arxiv_paper(title=p["title"], url=p["url"], abstract=p["abstract"]) for p in matches)
 
 # Test the function
 if __name__ == "__main__":

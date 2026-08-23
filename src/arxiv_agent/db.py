@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS arxiv_papers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     arxiv_id TEXT NOT NULL UNIQUE,
     title TEXT NOT NULL,
-    link TEXT NOT NULL,
+    url TEXT NOT NULL,
     abstract TEXT NOT NULL,
     published_date DATE NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -51,11 +51,11 @@ CREATE INDEX IF NOT EXISTS idx_arxiv_paper_chunks_embedding
 """
 
 UPSERT_PAPER_SQL = """
-INSERT INTO arxiv_papers (arxiv_id, title, link, abstract, published_date)
+INSERT INTO arxiv_papers (arxiv_id, title, url, abstract, published_date)
 VALUES (%s, %s, %s, %s, %s)
 ON CONFLICT (arxiv_id) DO UPDATE SET
     title = EXCLUDED.title,
-    link = EXCLUDED.link,
+    url = EXCLUDED.url,
     abstract = EXCLUDED.abstract,
     published_date = EXCLUDED.published_date
 """
@@ -83,7 +83,7 @@ SELECT embedding_version FROM arxiv_sync_meta WHERE published_date = %s
 """
 
 SEARCH_SQL = """
-SELECT c.arxiv_id, c.chunk_idx, p.title, p.link, p.abstract, c.content,
+SELECT c.arxiv_id, c.chunk_idx, p.title, p.url, p.abstract, c.content,
        1 - (c.embedding <=> %s) AS score
 FROM arxiv_paper_chunks c
 JOIN arxiv_papers p ON p.arxiv_id = c.arxiv_id
@@ -113,7 +113,7 @@ WHERE published_date = %s
 """
 
 PAPERS_BY_DATE_SQL = """
-SELECT arxiv_id, title, link, abstract, created_at AS first_seen
+SELECT arxiv_id, title, url, abstract, created_at AS first_seen
 FROM arxiv_papers
 WHERE published_date = %s
 ORDER BY created_at
@@ -137,6 +137,17 @@ def init_schema() -> None:
     with psycopg.connect(os.environ["ARXIV_AGENT_POSTGRES_URI"], autocommit=True) as connection:
         with connection.cursor() as cursor:
             cursor.execute(SCHEMA_SQL)
+            # Migrate legacy `link` column to `url` if needed (no-op for fresh installs)
+            cursor.execute("""
+                DO $$ BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='arxiv_papers' AND column_name='link'
+                    ) THEN
+                        ALTER TABLE arxiv_papers RENAME COLUMN link TO url;
+                    END IF;
+                END $$;
+            """)
 
 
 def date_has_papers(published_date: str) -> bool:
@@ -174,7 +185,7 @@ def sync_date(published_date: str, rows: list[dict], embedding_version: str) -> 
         (
             row["arxiv_id"],
             row["title"],
-            row["link"],
+            row["url"],
             row["abstract"],
             published_date,
         )
