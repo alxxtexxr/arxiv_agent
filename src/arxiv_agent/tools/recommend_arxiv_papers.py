@@ -89,9 +89,9 @@ def _fetch_feed_entries() -> list[dict[str, str]]:
     feed = feedparser.parse(f"https://rss.arxiv.org/rss/{os.environ["ARXIV_RECOMMENDATION_CATEGORY"]}")
     return [
         {
-            "arxiv_id": _normalize_arxiv_id(entry.url),
+            "arxiv_id": _normalize_arxiv_id(entry.link),
             "title": entry.title,
-            "url": entry.url,
+            "url": entry.link,
             "abstract": entry.summary.split("Abstract:", 1)[-1].strip(),
         }
         for entry in feed.entries
