@@ -44,18 +44,13 @@ def _fetch_papers(with_abstract: bool=False) -> list[dict[str, Any]]:
 
     papers = []
     for r in client.results(search):
+        paper = {
+            "title": r.title,
+            "url": r.entry_id,
+        }
         if with_abstract:
-            papers.append({
-                "title": r.title,
-                "url": f"https://arxiv.org/abs/{r.entry_id}",
-                "abstract": r.summary,
-            })
-        else:
-            papers.append({
-                "title": r.title,
-                "url": f"https://arxiv.org/abs/{r.entry_id}",
-            })
-
+            paper["abstract"] = r.summary
+        papers.append(paper)
     return papers
 
 @tool
