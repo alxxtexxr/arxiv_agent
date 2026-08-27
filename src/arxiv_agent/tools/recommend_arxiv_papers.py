@@ -86,7 +86,7 @@ def _normalize_arxiv_id(raw_id: str) -> str:
 
 def _fetch_feed_entries() -> list[dict[str, str]]:
     """Fetch today's papers from the arXiv RSS feed."""
-    feed = feedparser.parse(f"https://rss.arxiv.org/rss/{os.environ["ARXIV_RECOMMENDATION_CATEGORY"]}")
+    feed = feedparser.parse(f"https://rss.arxiv.org/rss/{os.environ['ARXIV_RECOMMENDATION_CATEGORY']}")
     return [
         {
             "arxiv_id": _normalize_arxiv_id(entry.link),
