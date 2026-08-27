@@ -113,7 +113,7 @@ def _fetch_api_entries_for_date(target_date: str) -> list[dict[str, str]]:
     """
     compact_date = target_date.replace("-", "")
     query = (
-        f"cat:{os.environ["ARXIV_RECOMMENDATION_CATEGORY"]} AND "
+        f"cat:{os.environ['ARXIV_RECOMMENDATION_CATEGORY']} AND "
         f"submittedDate:[{compact_date}0000 TO {compact_date}2359]"
     )
     search = arxiv_api.Search(
