@@ -32,7 +32,7 @@ cp .env.example .env
 4. Set your PostgreSQL database URI and [OpenAI API key](https://developers.openai.com/api/docs/quickstart#create-and-export-an-api-key) in `.env`. Optionally, update the OpenAI model settings and arXiv recommendation category.
 
 ```dotenv
-ARXIV_AGENT_POSTGRES_URI="postgresql://{username}:{password}@localhost:5432/arxiv_agent"
+VECTOR_DATABASE_URI="postgresql://{username}:{password}@localhost:5432/arxiv_agent"
 
 OPENAI_API_KEY="sk-..."
 MODEL_PROVIDER="openai"

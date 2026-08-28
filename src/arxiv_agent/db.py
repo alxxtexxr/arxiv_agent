@@ -127,7 +127,7 @@ ORDER BY created_at
 
 def _connect() -> psycopg.Connection:
     """Open an autocommit connection; pgvector types are registered per connection."""
-    connection = psycopg.connect(os.environ["ARXIV_AGENT_POSTGRES_URI"], autocommit=True)
+    connection = psycopg.connect(os.environ["VECTOR_DATABASE_URI"], autocommit=True)
     register_vector(connection)
     return connection
 
@@ -139,7 +139,7 @@ def init_schema() -> None:
     type itself, so ``register_vector`` (which requires the type to exist)
     cannot run before it.
     """
-    with psycopg.connect(os.environ["ARXIV_AGENT_POSTGRES_URI"], autocommit=True) as connection:
+    with psycopg.connect(os.environ["VECTOR_DATABASE_URI"], autocommit=True) as connection:
         with connection.cursor() as cursor:
             cursor.execute(SCHEMA_SQL)
             # Migrate legacy `link` column to `url` if needed (no-op for fresh installs)
