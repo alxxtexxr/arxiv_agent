@@ -15,28 +15,24 @@ from typing import Any, Literal
 
 import arxiv as arxiv_api
 import feedparser
-from anyio.functools import lru_cache
 from dotenv import load_dotenv
 from langchain.tools import tool
 from langchain_classic.retrievers.contextual_compression import (
     ContextualCompressionRetriever,
 )
 from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
-from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from arxiv_agent import db
+from arxiv_agent.embeddings import _get_reranker_model, get_embedding_model as _get_embedding_model
 from arxiv_agent.utils import format_arxiv_paper
 
 load_dotenv()
 
 CHUNK_SIZE = 250
 CHUNK_OVERLAP = 50
-EMBEDDING_MODEL_NAME = os.environ["EMBEDDING_MODEL"]
-RERANKER_MODEL_NAME = os.environ["RERANKER_MODEL"]
 MAX_RECOMMENDATIONS = 5
 MAX_BOOKMARKS_PROCESSED = 10
 
@@ -44,7 +40,7 @@ MAX_BOOKMARKS_PROCESSED = 10
 # any of the covered knobs invalidates stored embeddings, and the next access
 # of a date re-syncs it with the new configuration.
 EMBEDDING_VERSION = hashlib.sha1(
-    f"{CHUNK_SIZE}:{CHUNK_OVERLAP}:{EMBEDDING_MODEL_NAME}".encode()
+    f"{os.environ['EMBEDDING_STRATEGY'].lower()}:{CHUNK_SIZE}:{CHUNK_OVERLAP}:{os.environ["EMBEDDING_MODEL"]}".encode()
 ).hexdigest()[:12]
 
 text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
@@ -62,22 +58,6 @@ def _ensure_db_ready() -> None:
     if not _db_ready:
         db.init_schema()
         _db_ready = True
-
-
-@lru_cache(maxsize=1)
-def _get_embedding_model() -> HuggingFaceEmbeddings:
-    """Return the shared embedding model instance."""
-    return HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL_NAME,
-        encode_kwargs={"normalize_embeddings": True},
-    )
-
-
-@lru_cache(maxsize=1)
-def _get_reranker_model() -> HuggingFaceCrossEncoder:
-    """Return the shared reranker model instance."""
-    return HuggingFaceCrossEncoder(model_name=RERANKER_MODEL_NAME)
-
 
 def _normalize_arxiv_id(raw_id: str) -> str:
     """Normalize a paper identifier by stripping any version suffix."""
@@ -361,4 +341,4 @@ if __name__ == "__main__":
     from pprint import pprint
 
     pprint(recommend_todays_arxiv_papers.invoke(input={"mode": "query_based", "query": "machine learning"}))
-    pprint(recommend_todays_arxiv_papers.invoke(input={"mode": "personalized"}))
+    # pprint(recommend_todays_arxiv_papers.invoke(input={"mode": "personalized"}))

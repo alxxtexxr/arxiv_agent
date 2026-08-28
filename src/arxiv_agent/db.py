@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS arxiv_paper_chunks (
     arxiv_id TEXT NOT NULL REFERENCES arxiv_papers (arxiv_id) ON DELETE CASCADE,
     chunk_idx INT NOT NULL,
     content TEXT NOT NULL,
-    embedding VECTOR(1024) NOT NULL,
+    embedding VECTOR NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (arxiv_id, chunk_idx)
 );
@@ -151,6 +151,15 @@ def init_schema() -> None:
                     ) THEN
                         ALTER TABLE arxiv_papers RENAME COLUMN link TO url;
                     END IF;
+                END $$;
+            """)
+            # Migrate legacy fixed-dimension vector to unconstrained for strategy flexibility
+            cursor.execute("""
+                DO $$ BEGIN
+                    BEGIN
+                        ALTER TABLE arxiv_paper_chunks ALTER COLUMN embedding TYPE VECTOR;
+                    EXCEPTION WHEN OTHERS THEN NULL;
+                    END;
                 END $$;
             """)
 
