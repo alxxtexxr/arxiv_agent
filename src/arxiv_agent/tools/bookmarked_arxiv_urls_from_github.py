@@ -37,10 +37,10 @@ def extract_bookmarked_arxiv_urls_from_github() -> str:
     persists them for later use. Returns a confirmation message.
     """
     url = os.environ["GITHUB_BOOKMARKS_URL"]
-    token = os.environ["GITHUB_TOKEN"]
+    token = os.environ["GITHUB_PAT"]
     
     if not url or not token:
-        return "Missing GITHUB_BOOKMARKS_URL or GITHUB_TOKEN environment variables."
+        return "Missing GITHUB_BOOKMARKS_URL or GITHUB_PAT environment variables."
 
     response = requests.get(url, headers={"Authorization": f"Bearer {token}"})
     response.raise_for_status()
