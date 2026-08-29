@@ -67,7 +67,7 @@ def _get_reranker_model_uncached():
         return HuggingFaceCrossEncoder(model_name=os.environ["RERANKER_MODEL"])
 
     raise ValueError(
-        f"Unknown RERANKER_INTEGRATION: {strategy}. Expected 'tei' | 'hf' | 'huggingface'."
+        f"Unknown RERANKER_INTEGRATION: '{strategy}'. Expected one of: 'tei' | 'hf' | 'huggingface'."
     )
 
 

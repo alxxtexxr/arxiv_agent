@@ -57,7 +57,7 @@ def _get_embedding_model_uncached() -> Embeddings:
         )
 
     raise ValueError(
-        f"Unknown EMBEDDING_INTEGRATION '{strategy}'. Expected 'openai' | 'tei' | 'hf' | 'huggingface'."
+        f"Unknown EMBEDDING_INTEGRATION: '{strategy}'. Expected one of: 'openai' | 'tei' | 'hf' | 'huggingface'."
     )
 
 
