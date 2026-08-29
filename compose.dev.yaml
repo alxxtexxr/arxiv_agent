@@ -1,7 +1,9 @@
 name: arxiv-agent-dev
+
 volumes:
   tei-embedding-data:
   tei-reranker-data:
+
 services:
   tei-embedding:
     # image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest # CPU (x86_64)
@@ -11,6 +13,7 @@ services:
     ports:
       - "8080:80"
     command: ["--model-id", "${EMBEDDING_MODEL}"] # EMBEDDING_MODEL is defined in .env
+    
   tei-reranker:
     # image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest # CPU (x86_64)
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-arm64-latest # CPU (aarch64)
