@@ -5,7 +5,7 @@ from typing import Any, Dict
 from langchain.messages import SystemMessage
 from langgraph.graph import MessagesState
 
-from arxiv_agent.chat_model import chat_model_with_tools
+from arxiv_agent.models.chat_model import chat_model_with_tools
 
 SYSTEM_PROMPT = """You are a helpful assistant.
 

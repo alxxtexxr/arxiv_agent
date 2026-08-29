@@ -29,8 +29,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from openai import APIConnectionError
 
 from arxiv_agent import db
-from arxiv_agent.embeddings import _get_reranker_model
-from arxiv_agent.embeddings import get_embedding_model as _get_embedding_model
+from arxiv_agent.models.embedding_model import (
+    get_embedding_model as _get_embedding_model,
+)
+from arxiv_agent.models.reranker_model import _get_reranker_model
 from arxiv_agent.utils import format_arxiv_paper
 
 load_dotenv()
