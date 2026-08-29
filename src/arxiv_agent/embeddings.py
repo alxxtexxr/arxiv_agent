@@ -28,7 +28,7 @@ ENABLE_RERANKER_CACHE = os.getenv("ENABLE_RERANKER_CACHE", "true").lower() in (
 
 
 def _get_embedding_model_uncached() -> Embeddings:
-    """Return an embeddings instance based on EMBEDDING_STRATEGY.
+    """Return an embeddings instance based on EMBEDDING_INTEGRATION.
 
     Strategies:
     - ``openai``: uses ``OpenAIEmbeddings`` with ``text-embedding-3-small``.
@@ -37,7 +37,7 @@ def _get_embedding_model_uncached() -> Embeddings:
     - ``hf`` / ``huggingface``: uses local ``HuggingFaceEmbeddings`` with
       ``EMBEDDING_MODEL``.
     """
-    strategy = os.environ["EMBEDDING_STRATEGY"].lower()
+    strategy = os.environ["EMBEDDING_INTEGRATION"].lower()
 
     if strategy == "openai":
         from langchain_openai import OpenAIEmbeddings
@@ -49,7 +49,7 @@ def _get_embedding_model_uncached() -> Embeddings:
 
         base_url = os.environ.get("TEI_EMBEDDING_URL") or os.environ.get("TEI_EMBEDDINNG_URL")
         if not base_url:
-            raise ValueError("TEI_EMBEDDING_URL (or TEI_EMBEDDINNG_URL) must be set for EMBEDDING_STRATEGY=tei")
+            raise ValueError("TEI_EMBEDDING_URL (or TEI_EMBEDDINNG_URL) must be set for EMBEDDING_INTEGRATION=tei")
         return OpenAIEmbeddings(
             model=os.environ["EMBEDDING_MODEL"],
             base_url=base_url.rstrip("/") + "/v1",
@@ -68,7 +68,7 @@ def _get_embedding_model_uncached() -> Embeddings:
         )
 
     raise ValueError(
-        f"Unknown EMBEDDING_STRATEGY '{strategy}'. Expected 'openai' | 'tei' | 'hf' | 'huggingface'."
+        f"Unknown EMBEDDING_INTEGRATION '{strategy}'. Expected 'openai' | 'tei' | 'hf' | 'huggingface'."
     )
 
 
@@ -81,12 +81,12 @@ get_embedding_model = (
 
 def _get_reranker_model_uncached():
     """Return the shared reranker model instance."""
-    strategy = os.environ["RERANKER_STRATEGY"].lower()
+    strategy = os.environ["RERANKER_INTEGRATION"].lower()
     
     if strategy == "tei":
         base_url = os.environ.get("TEI_RERANKER_URL")
         if not base_url:
-            raise ValueError("TEI_RERANKER_URL must be set for RERANKER_STRATEGY=tei")
+            raise ValueError("TEI_RERANKER_URL must be set for RERANKER_INTEGRATION=tei")
         endpoint = base_url.rstrip("/") + "/rerank"
         
         class TeiCrossEncoder(BaseCrossEncoder):
@@ -126,7 +126,7 @@ def _get_reranker_model_uncached():
         return HuggingFaceCrossEncoder(model_name=os.environ["RERANKER_MODEL"])
 
     raise ValueError(
-        f"Unknown RERANKER_STRATEGY: {strategy}. Expected 'tei' | 'hf' | 'huggingface'."
+        f"Unknown RERANKER_INTEGRATION: {strategy}. Expected 'tei' | 'hf' | 'huggingface'."
     )
 
 

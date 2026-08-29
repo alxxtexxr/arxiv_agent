@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 # any of the covered knobs invalidates stored embeddings, and the next access
 # of a date re-syncs it with the new configuration.
 EMBEDDING_VERSION = hashlib.sha1(
-    f"{os.environ['EMBEDDING_STRATEGY'].lower()}:{CHUNK_SIZE}:{CHUNK_OVERLAP}:{os.environ['EMBEDDING_MODEL']}".encode()
+    f"{os.environ['EMBEDDING_INTEGRATION'].lower()}:{CHUNK_SIZE}:{CHUNK_OVERLAP}:{os.environ['EMBEDDING_MODEL']}".encode()
 ).hexdigest()[:12]
 
 text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
