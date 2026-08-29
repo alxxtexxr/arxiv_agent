@@ -5,12 +5,29 @@ from typing import List
 
 import requests
 from anyio.functools import lru_cache
+from dotenv import load_dotenv
+from langchain_classic.retrievers.document_compressors.cross_encoder import (
+    BaseCrossEncoder,
+)
 from langchain_core.embeddings import Embeddings
-from langchain_classic.retrievers.document_compressors.cross_encoder import BaseCrossEncoder
+
+load_dotenv()
+
+ENABLE_EMBEDDING_CACHE = os.getenv("ENABLE_EMBEDDING_CACHE", "true").lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+ENABLE_RERANKER_CACHE = os.getenv("ENABLE_RERANKER_CACHE", "true").lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
 
 
-@lru_cache(maxsize=1)
-def get_embedding_model() -> Embeddings:
+def _get_embedding_model_uncached() -> Embeddings:
     """Return an embeddings instance based on EMBEDDING_STRATEGY.
 
     Strategies:
@@ -55,8 +72,14 @@ def get_embedding_model() -> Embeddings:
     )
 
 
-@lru_cache(maxsize=1)
-def _get_reranker_model():
+get_embedding_model = (
+    lru_cache(maxsize=1)(_get_embedding_model_uncached)
+    if ENABLE_EMBEDDING_CACHE
+    else _get_embedding_model_uncached
+)
+
+
+def _get_reranker_model_uncached():
     """Return the shared reranker model instance."""
     strategy = os.environ["RERANKER_STRATEGY"].lower()
     
@@ -105,3 +128,13 @@ def _get_reranker_model():
     raise ValueError(
         f"Unknown RERANKER_STRATEGY: {strategy}. Expected 'tei' | 'hf' | 'huggingface'."
     )
+
+
+_get_reranker_model = (
+    lru_cache(maxsize=1)(_get_reranker_model_uncached)
+    if ENABLE_RERANKER_CACHE
+    else _get_reranker_model_uncached
+)
+
+# Keep backward-compatible alias (some modules import _get_reranker_model)
+get_reranker_model = _get_reranker_model
