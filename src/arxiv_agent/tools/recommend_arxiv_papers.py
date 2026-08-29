@@ -26,7 +26,8 @@ from langchain_core.retrievers import BaseRetriever
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from arxiv_agent import db
-from arxiv_agent.embeddings import _get_reranker_model, get_embedding_model as _get_embedding_model
+from arxiv_agent.embeddings import _get_reranker_model
+from arxiv_agent.embeddings import get_embedding_model as _get_embedding_model
 from arxiv_agent.utils import format_arxiv_paper
 
 load_dotenv()
@@ -40,7 +41,7 @@ MAX_BOOKMARKS_PROCESSED = 10
 # any of the covered knobs invalidates stored embeddings, and the next access
 # of a date re-syncs it with the new configuration.
 EMBEDDING_VERSION = hashlib.sha1(
-    f"{os.environ['EMBEDDING_STRATEGY'].lower()}:{CHUNK_SIZE}:{CHUNK_OVERLAP}:{os.environ["EMBEDDING_MODEL"]}".encode()
+    f"{os.environ['EMBEDDING_STRATEGY'].lower()}:{CHUNK_SIZE}:{CHUNK_OVERLAP}:{os.environ['EMBEDDING_MODEL']}".encode()
 ).hexdigest()[:12]
 
 text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
@@ -155,6 +156,11 @@ def _sync_date(target_date: str) -> int:
     return len(rows)
 
 
+def _has_current_chunks(target_date: str) -> bool:
+    """Return whether a date has chunks created with the active embedding config."""
+    return db.get_sync_version(target_date) == EMBEDDING_VERSION and db.date_has_chunks(target_date)
+
+
 def _ensure_synced(target_date: str) -> None:
     """Ensure a date's papers are stored with the current embedding version.
 
@@ -164,10 +170,12 @@ def _ensure_synced(target_date: str) -> None:
     """
     _ensure_db_ready()
     if target_date in _synced_dates:
-        return
+        if _has_current_chunks(target_date):
+            return
+        _synced_dates.discard(target_date)
     if db.get_sync_version(target_date) != EMBEDDING_VERSION:
         _sync_date(target_date)
-    if db.date_has_chunks(target_date):
+    if _has_current_chunks(target_date):
         _synced_dates.add(target_date)
 
 
@@ -305,7 +313,7 @@ def recommend_arxiv_papers_by_date(
     """Recommend a date's arXiv papers based on either a query or the user's bookmarked papers."""
     _ensure_synced(target_date)
 
-    if not db.date_has_chunks(target_date):
+    if not _has_current_chunks(target_date):
         return _empty_date_message(target_date, db.get_most_recent_date())
 
     if mode == "query_based":

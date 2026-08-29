@@ -1,11 +1,12 @@
 """PostgreSQL + pgvector storage layer for arXiv papers.
 
 Hand-rolled SQL (no ORM/vectorstore wrapper) with a normalized schema: paper
-metadata lives once in ``arxiv_papers``, while chunks and their bge-m3
+metadata lives once in ``arxiv_papers``, while chunks and their configured
 embeddings live in ``arxiv_paper_chunks``. Idempotent upserts are backed by
 unique constraints on the natural keys (arxiv_id / arxiv_id + chunk_idx), a
-btree index enables date-based retrieval, and an HNSW index on the embeddings
-provides approximate cosine similarity search.
+btree index enables date-based retrieval, and vector searches are filtered by
+embedding dimensionality so stale vectors from older embedding models cannot
+crash pgvector comparisons.
 """
 
 import os
@@ -46,8 +47,6 @@ CREATE TABLE IF NOT EXISTS arxiv_sync_meta (
 CREATE INDEX IF NOT EXISTS idx_arxiv_papers_date
     ON arxiv_papers (published_date);
 
-CREATE INDEX IF NOT EXISTS idx_arxiv_paper_chunks_embedding
-    ON arxiv_paper_chunks USING hnsw (embedding vector_cosine_ops);
 """
 
 UPSERT_PAPER_SQL = """
@@ -93,6 +92,7 @@ SELECT c.arxiv_id, c.chunk_idx, p.title, p.url, p.abstract, c.content,
 FROM arxiv_paper_chunks c
 JOIN arxiv_papers p ON p.arxiv_id = c.arxiv_id
 WHERE p.published_date = %s
+  AND vector_dims(c.embedding) = %s
 ORDER BY c.embedding <=> %s
 LIMIT %s
 """
@@ -142,6 +142,9 @@ def init_schema() -> None:
     with psycopg.connect(os.environ["VECTOR_DATABASE_URI"], autocommit=True) as connection:
         with connection.cursor() as cursor:
             cursor.execute(SCHEMA_SQL)
+            # A global HNSW index is unsafe for an unconstrained VECTOR column when
+            # embedding models can change dimensions; date-scoped scans are small.
+            cursor.execute("DROP INDEX IF EXISTS idx_arxiv_paper_chunks_embedding")
             # Migrate legacy `link` column to `url` if needed (no-op for fresh installs)
             cursor.execute("""
                 DO $$ BEGIN
@@ -236,7 +239,7 @@ def search_by_date(published_date: str, query_vector: list[float], k: int) -> li
     vector = Vector(query_vector)
     with _connect() as connection:
         with connection.cursor(row_factory=psycopg.rows.dict_row) as cursor:
-            cursor.execute(SEARCH_SQL, (vector, published_date, vector, k))
+            cursor.execute(SEARCH_SQL, (vector, published_date, len(query_vector), vector, k))
             return cursor.fetchall()
 
 
