@@ -1,7 +1,10 @@
 name: arxiv-agent
+
 volumes:
   postgres-data:
-    driver: local
+  tei-embedding-data:
+  tei-reranker-data:
+
 services:
   redis:
     image: redis:6
@@ -10,6 +13,7 @@ services:
       interval: 5s
       timeout: 1s
       retries: 5
+      
   postgres:
     image: pgvector/pgvector:pg16
     volumes:
@@ -23,6 +27,39 @@ services:
       timeout: 1s
       retries: 5
       interval: 5s
+
+  tei-embedding:
+    # image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest # CPU (x86_64)
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-arm64-latest # CPU (aarch64)
+    volumes:
+      - tei-embedding-data:/data
+    env_file:
+      - .env.production
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["exec text-embeddings-router --model-id \"$${EMBEDDING_MODEL}\""]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 300s
+
+  tei-reranker:
+    # image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest # CPU (x86_64)
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-arm64-latest # CPU (aarch64)
+    volumes:
+      - tei-reranker-data:/data
+    env_file:
+      - .env.production
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["exec text-embeddings-router --model-id \"$${RERANKER_MODEL}\""]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 300s
+
   arxiv-agent:
     image: alimtegar/arxiv-agent:latest
     volumes:
@@ -38,4 +75,8 @@ services:
       redis:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+      tei-embedding:
+        condition: service_healthy
+      tei-reranker:
         condition: service_healthy
