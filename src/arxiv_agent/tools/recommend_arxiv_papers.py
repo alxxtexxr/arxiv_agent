@@ -6,6 +6,7 @@ the arXiv API), stores the chunks and their bge-m3 embeddings in PostgreSQL
 """
 
 import hashlib
+import logging
 import os
 import re
 from builtins import sorted
@@ -15,6 +16,7 @@ from typing import Any, Literal
 
 import arxiv as arxiv_api
 import feedparser
+import requests
 from dotenv import load_dotenv
 from langchain.tools import tool
 from langchain_classic.retrievers.contextual_compression import (
@@ -24,6 +26,7 @@ from langchain_classic.retrievers.document_compressors import CrossEncoderRerank
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from openai import APIConnectionError
 
 from arxiv_agent import db
 from arxiv_agent.embeddings import _get_reranker_model
@@ -36,6 +39,16 @@ CHUNK_SIZE = 250
 CHUNK_OVERLAP = 50
 MAX_RECOMMENDATIONS = 5
 MAX_BOOKMARKS_PROCESSED = 10
+EMBEDDING_UNAVAILABLE_MESSAGE = (
+    "Paper recommendations are unavailable because the embedding service could not be reached. "
+    "Please try again later."
+)
+RERANKER_UNAVAILABLE_MESSAGE = (
+    "Paper recommendations are unavailable because the ranking service could not be reached. "
+    "Please try again later."
+)
+
+logger = logging.getLogger(__name__)
 
 # Stored chunks are keyed to the configuration that produced them; changing
 # any of the covered knobs invalidates stored embeddings, and the next access
@@ -311,26 +324,43 @@ def recommend_arxiv_papers_by_date(
     query: str | None = None,
 ) -> str:
     """Recommend a date's arXiv papers based on either a query or the user's bookmarked papers."""
-    _ensure_synced(target_date)
+    try:
+        _ensure_synced(target_date)
 
-    if not _has_current_chunks(target_date):
-        return _empty_date_message(target_date, db.get_most_recent_date())
+        if not _has_current_chunks(target_date):
+            return _empty_date_message(target_date, db.get_most_recent_date())
 
-    if mode == "query_based":
-        if query is None:
-            return "Query must be provided for query-based recommendations."
-        retrieved_docs = _recommend_query_based_by_date(target_date, query)
-        if not retrieved_docs:
-            return "No matching papers found for query."
-        return "\n\n".join(retrieved_docs)
+        if mode == "query_based":
+            if query is None:
+                return "Query must be provided for query-based recommendations."
+            retrieved_docs = _recommend_query_based_by_date(target_date, query)
+            if not retrieved_docs:
+                return "No matching papers found for query."
+            return "\n\n".join(retrieved_docs)
+
+        if mode == "personalized":
+            retrieved_docs = _recommend_personalized_by_date(target_date)
+            if not retrieved_docs:
+                return "No matching papers found for bookmarked papers."
+            return "\n\n".join(retrieved_docs)
         
-    if mode == "personalized":
-        retrieved_docs = _recommend_personalized_by_date(target_date)
-        if not retrieved_docs:
-            return "No matching papers found for bookmarked papers."
-        return "\n\n".join(retrieved_docs)
-    
-    return "Invalid mode. Please choose 'query_based' or 'personalized'."
+        return "Invalid mode. Please choose 'query_based' or 'personalized'."
+    except APIConnectionError:
+        logger.exception(
+            "Embedding service connection failed during paper recommendation "
+            "(target_date=%s, mode=%s)",
+            target_date,
+            mode,
+        )
+        return EMBEDDING_UNAVAILABLE_MESSAGE
+    except requests.RequestException:
+        logger.exception(
+            "Ranking service connection failed during paper recommendation "
+            "(target_date=%s, mode=%s)",
+            target_date,
+            mode,
+        )
+        return RERANKER_UNAVAILABLE_MESSAGE
 
 
 @tool
