@@ -24,6 +24,11 @@ def _get_reranker_model_uncached():
     """Return the shared reranker model instance."""
     strategy = os.environ["RERANKER_INTEGRATION"].lower()
     
+    if strategy == "flashrank":
+        from langchain_community.document_compressors.flashrank_rerank import FlashrankRerank
+
+        return FlashrankRerank(model=os.environ["RERANKER_MODEL"])
+    
     if strategy == "tei":
         base_url = os.environ.get("TEI_RERANKER_URL")
         if not base_url:

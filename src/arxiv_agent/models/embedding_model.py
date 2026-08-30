@@ -31,7 +31,12 @@ def _get_embedding_model_uncached() -> Embeddings:
     if strategy == "openai":
         from langchain_openai import OpenAIEmbeddings
 
-        return OpenAIEmbeddings(model="text-embedding-3-small")
+        return OpenAIEmbeddings(model_name=os.environ["EMBEDDING_MODEL"])
+
+    if strategy == "fastembed":
+        from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+
+        return FastEmbedEmbeddings(model_name=os.environ["EMBEDDING_MODEL"])
 
     if strategy == "tei":
         from langchain_openai import OpenAIEmbeddings

@@ -218,10 +218,22 @@ class _ArxivDateRetriever(BaseRetriever):
 
 def _get_compression_retriever(target_date: str, top_n: int = 5) -> ContextualCompressionRetriever:
     """Return a retrieval + rerank pipeline scoped to a specific date."""
-    reranker = CrossEncoderReranker(model=get_reranker_model(), top_n=top_n)
+    model = get_reranker_model()
+    # FlashrankRerank is already a document compressor; cross-encoders need wrapping.
+    from langchain_core.documents import BaseDocumentCompressor
+
+    if isinstance(model, BaseDocumentCompressor):
+        base_compressor: BaseDocumentCompressor = model
+        # Flashrank's top_n is set at construction; ensure it matches caller's request
+        try:
+            base_compressor.top_n = top_n  # type: ignore[attr-defined]
+        except Exception:
+            pass
+    else:
+        base_compressor = CrossEncoderReranker(model=model, top_n=top_n)
     return ContextualCompressionRetriever(
         base_retriever=_ArxivDateRetriever(date=target_date),
-        base_compressor=reranker,
+        base_compressor=base_compressor,
     )
 
 
