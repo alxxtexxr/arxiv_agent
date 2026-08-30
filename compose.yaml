@@ -78,7 +78,7 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      tei-embedding:
-        condition: service_healthy
-      tei-reranker:
-        condition: service_healthy
+      # tei-embedding:
+      #   condition: service_healthy
+      # tei-reranker:
+      #   condition: service_healthy
