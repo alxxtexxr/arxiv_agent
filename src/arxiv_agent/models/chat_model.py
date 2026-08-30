@@ -4,7 +4,6 @@ import os
 
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
-from langchain_mistralai import ChatMistralAI
 
 from arxiv_agent.tools import tools
 
@@ -17,6 +16,8 @@ if len(_chat_model_str.split(":")) != 2:
     )
 
 if "mistral" in _chat_model_str:
+    from langchain_mistralai import ChatMistralAI
+    
     chat_model = ChatMistralAI(model=_chat_model_str.split(":")[1])
 else:
     chat_model = init_chat_model(
