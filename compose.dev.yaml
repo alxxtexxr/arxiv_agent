@@ -8,6 +8,7 @@ services:
   tei-embedding:
     # image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest # CPU (x86_64)
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-arm64-latest # CPU (aarch64)
+    profiles: ["tei", "tei-embedding"]
     volumes:
       - tei-embedding-data:/data
     ports:
@@ -17,6 +18,7 @@ services:
   tei-reranker:
     # image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest # CPU (x86_64)
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-arm64-latest # CPU (aarch64)
+    profiles: ["tei", "tei-reranker"]
     volumes:
       - tei-reranker-data:/data
     ports:
