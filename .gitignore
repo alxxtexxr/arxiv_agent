@@ -171,3 +171,4 @@ src/arxiv_agent/data/bookmarked_arxiv_urls_from_github_*.txt
 opencode.jsonc
 *.md
 !README.md
+memray*
