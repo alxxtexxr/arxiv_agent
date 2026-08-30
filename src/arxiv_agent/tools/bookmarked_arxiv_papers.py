@@ -6,8 +6,6 @@ from typing import Any
 import arxiv
 from langchain.tools import tool
 
-from arxiv_agent.utils import format_arxiv_paper
-
 BOOKMARKED_ARXIV_DATA_DIR = Path(__file__).parent.parent / "data"
 
 
@@ -52,6 +50,18 @@ def _fetch_papers(with_abstract: bool=False) -> list[dict[str, Any]]:
             paper["abstract"] = r.summary
         papers.append(paper)
     return papers
+
+
+def format_arxiv_paper(title: str, url: str, abstract: str | None = None) -> str:
+    """Format arXiv paper metadata into a readable string."""
+    if abstract is not None:
+        return (
+            f"Title: {title}\n"
+            f"URL: {url}\n"
+            f"Abstract: {abstract}"
+        )
+    return f"Title: {title}\nURL: {url}"
+
 
 @tool
 def get_bookmarked_arxiv_papers(with_abstract: bool=False) -> str:

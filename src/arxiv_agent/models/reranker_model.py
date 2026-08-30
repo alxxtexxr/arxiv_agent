@@ -71,11 +71,8 @@ def _get_reranker_model_uncached():
     )
 
 
-_get_reranker_model = (
+get_reranker_model = (
     lru_cache(maxsize=1)(_get_reranker_model_uncached)
     if ENABLE_RERANKER_CACHE
     else _get_reranker_model_uncached
 )
-
-# Keep backward-compatible alias (some modules import _get_reranker_model)
-get_reranker_model = _get_reranker_model

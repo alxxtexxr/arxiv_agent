@@ -29,13 +29,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from openai import APIConnectionError
 
 from arxiv_agent import db
-from arxiv_agent.models.embedding_model import (
-    get_embedding_model as _get_embedding_model,
-)
-from arxiv_agent.models.reranker_model import _get_reranker_model
-from arxiv_agent.utils import format_arxiv_paper
+from arxiv_agent.models.embedding_model import get_embedding_model
+from arxiv_agent.models.reranker_model import get_reranker_model
+from arxiv_agent.tools.bookmarked_arxiv_papers import format_arxiv_paper
 
-load_dotenv()
+load_dotenv()  # Load environment variables from .env file
 
 CHUNK_SIZE = 250
 CHUNK_OVERLAP = 50
@@ -150,7 +148,7 @@ def _sync_date(target_date: str) -> int:
     ]
     chunks_per_paper = [text_splitter.split_text(doc) for doc in paper_docs]
     flat_chunks = [chunk for chunks in chunks_per_paper for chunk in chunks]
-    flat_embeddings = _get_embedding_model().embed_documents(flat_chunks)
+    flat_embeddings = get_embedding_model().embed_documents(flat_chunks)
 
     rows = []
     offset = 0
@@ -201,7 +199,7 @@ class _ArxivDateRetriever(BaseRetriever):
     k: int = 10
 
     def _get_relevant_documents(self, query: str) -> list[Document]:
-        query_vector = _get_embedding_model().embed_query(query)
+        query_vector = get_embedding_model().embed_query(query)
         rows = db.search_by_date(self.date, query_vector, self.k)
         return [
             Document(
@@ -220,7 +218,7 @@ class _ArxivDateRetriever(BaseRetriever):
 
 def _get_compression_retriever(target_date: str, top_n: int = 5) -> ContextualCompressionRetriever:
     """Return a retrieval + rerank pipeline scoped to a specific date."""
-    reranker = CrossEncoderReranker(model=_get_reranker_model(), top_n=top_n)
+    reranker = CrossEncoderReranker(model=get_reranker_model(), top_n=top_n)
     return ContextualCompressionRetriever(
         base_retriever=_ArxivDateRetriever(date=target_date),
         base_compressor=reranker,
