@@ -197,40 +197,32 @@ def get_most_recent_date() -> str | None:
         return row[0].isoformat() if row and row[0] else None
 
 
-def sync_date(published_date: str, rows: list[dict], embedding_version: str) -> None:
-    """Atomically sync a date's papers, chunks, and sync metadata.
-
-    Upserts paper metadata, replaces the date's chunks, and records the
-    embedding version that produced them. Chunks are deleted and re-inserted
-    (rather than upserted) so that a change in the chunking configuration
-    cannot leave stale chunks with old boundaries behind. All phases run in a
-    single transaction.
-    """
-    paper_params = [
-        (
-            row["arxiv_id"],
-            row["title"],
-            row["url"],
-            row["abstract"],
-            published_date,
-        )
-        for row in rows
-    ]
-    chunk_params = [
-        (
-            row["arxiv_id"],
-            row["chunk_idx"],
-            row["content"],
-            Vector(row["embedding"]),
-        )
-        for row in rows
-    ]
+def upsert_chunks(chunk_rows: list[dict]) -> None:
+    """Upsert a batch of chunk rows (assumes papers are already upserted)."""
     with _connect() as connection, connection.transaction():
         with connection.cursor() as cursor:
-            cursor.executemany(UPSERT_PAPER_SQL, paper_params)
+            cursor.executemany(UPSERT_CHUNK_SQL, [
+                (
+                    row["arxiv_id"],
+                    row["chunk_idx"],
+                    row["content"],
+                    Vector(row["embedding"]),
+                )
+                for row in chunk_rows
+            ])
+
+
+def delete_chunks_for_date(published_date: str) -> None:
+    """Delete all chunks for a given date."""
+    with _connect() as connection, connection.transaction():
+        with connection.cursor() as cursor:
             cursor.execute(DELETE_CHUNKS_SQL, (published_date,))
-            cursor.executemany(UPSERT_CHUNK_SQL, chunk_params)
-            cursor.execute(UPSERT_SYNC_META_SQL, (published_date, embedding_version))
+
+
+def cleanup_orphan_papers(published_date: str) -> None:
+    """Remove papers that have no chunks for the date."""
+    with _connect() as connection, connection.transaction():
+        with connection.cursor() as cursor:
             cursor.execute(CLEANUP_ORPHAN_PAPERS_SQL, (published_date,))
 
 

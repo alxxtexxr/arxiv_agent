@@ -13,6 +13,10 @@ services:
       interval: 5s
       timeout: 1s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 64M
       
   postgres:
     image: pgvector/pgvector:pg16
@@ -24,9 +28,13 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
       start_period: 10s
+      interval: 5s
       timeout: 1s
       retries: 5
-      interval: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   tei-embedding:
     # image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest # CPU (x86_64)
@@ -40,10 +48,10 @@ services:
     command: ["exec text-embeddings-router --model-id \"$${EMBEDDING_MODEL}\""]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      start_period: 300s
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 300s
 
   tei-reranker:
     # image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest # CPU (x86_64)
@@ -57,10 +65,10 @@ services:
     command: ["exec text-embeddings-router --model-id \"$${RERANKER_MODEL}\""]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      start_period: 300s
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 300s
 
   arxiv-agent:
     image: alimtegar/arxiv-agent:latest
@@ -82,3 +90,7 @@ services:
       #   condition: service_healthy
       # tei-reranker:
       #   condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1.4G

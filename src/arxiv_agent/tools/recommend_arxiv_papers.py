@@ -134,39 +134,75 @@ def _fetch_api_entries_for_date(target_date: str) -> list[dict[str, str]]:
 
 
 def _sync_date(target_date: str) -> int:
-    """Fetch, chunk, embed, and upsert a date's papers. Returns chunk count."""
-    if target_date == date_cls.today().isoformat():
-        entries = _fetch_feed_entries()
-    else:
-        entries = _fetch_api_entries_for_date(target_date)
+    entries = _fetch_feed_entries() if target_date == date_cls.today().isoformat() else _fetch_api_entries_for_date(target_date)
     if not entries:
         return 0
 
+    # 1. Build paper metadata and chunks (same as before)
     paper_docs = [
         format_arxiv_paper(title=e["title"], url=e["url"], abstract=e["abstract"])
         for e in entries
     ]
     chunks_per_paper = [text_splitter.split_text(doc) for doc in paper_docs]
     flat_chunks = [chunk for chunks in chunks_per_paper for chunk in chunks]
-    flat_embeddings = get_embedding_model().embed_documents(flat_chunks)
 
-    rows = []
-    offset = 0
-    for paper_index, entry in enumerate(entries):
-        for chunk_idx, chunk_text in enumerate(chunks_per_paper[paper_index]):
-            rows.append({
+    # Pre‑compute mapping from flat_chunk index to (paper_index, chunk_idx)
+    chunk_meta = []
+    for i, chunks in enumerate(chunks_per_paper):
+        for j in range(len(chunks)):
+            chunk_meta.append((i, j))
+
+    # 2. Upsert papers (metadata) once
+    paper_params = [
+        (
+            e["arxiv_id"],
+            e["title"],
+            e["url"],
+            e["abstract"],
+            target_date,
+        )
+        for e in entries
+    ]
+    with db._connect() as connection, connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.executemany(db.UPSERT_PAPER_SQL, paper_params)
+
+    # 3. Delete all existing chunks for this date (critical fix)
+    db.delete_chunks_for_date(target_date)
+
+    # 4. Process chunks in batches
+    embedding_model = get_embedding_model()
+    total_chunks = len(flat_chunks)
+    BATCH_SIZE = 30  # tune
+
+    for start in range(0, total_chunks, BATCH_SIZE):
+        batch_chunks = flat_chunks[start:start+BATCH_SIZE]
+        batch_embeddings = embedding_model.embed_documents(batch_chunks)
+
+        batch_rows = []
+        for idx, chunk_text in enumerate(batch_chunks):
+            paper_idx, chunk_idx = chunk_meta[start + idx]
+            entry = entries[paper_idx]
+            batch_rows.append({
                 "arxiv_id": entry["arxiv_id"],
                 "chunk_idx": chunk_idx,
-                "title": entry["title"],
-                "url": entry["url"],
-                "abstract": entry["abstract"],
                 "content": chunk_text,
-                "embedding": flat_embeddings[offset],
+                "embedding": batch_embeddings[idx],
             })
-            offset += 1
 
-    db.sync_date(target_date, rows, EMBEDDING_VERSION)
-    return len(rows)
+        db.upsert_chunks(batch_rows)   # uses INSERT (no conflict, but we deleted all already)
+        del batch_chunks, batch_embeddings, batch_rows
+        import gc; gc.collect()
+
+    # 5. Clean up any papers that might have been orphaned (optional but safe)
+    db.cleanup_orphan_papers(target_date)
+
+    # 6. Record sync metadata
+    with db._connect() as connection, connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(db.UPSERT_SYNC_META_SQL, (target_date, EMBEDDING_VERSION))
+
+    return total_chunks
 
 
 def _has_current_chunks(target_date: str) -> bool:
