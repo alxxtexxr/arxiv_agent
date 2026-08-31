@@ -17,6 +17,7 @@ services:
       resources:
         limits:
           memory: 64M
+    restart: unless-stopped
       
   postgres:
     image: pgvector/pgvector:pg16
@@ -35,10 +36,11 @@ services:
       resources:
         limits:
           memory: 256M
+    restart: unless-stopped
 
   tei-embedding:
-    # image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest # CPU (x86_64)
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-arm64-latest # CPU (aarch64)
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest # CPU (x86_64)
+    # image: ghcr.io/huggingface/text-embeddings-inference:cpu-arm64-latest # CPU (aarch64)
     profiles: ["tei", "tei-embedding"]
     volumes:
       - tei-embedding-data:/data
@@ -52,10 +54,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   tei-reranker:
-    # image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest # CPU (x86_64)
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-arm64-latest # CPU (aarch64)
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest # CPU (x86_64)
+    # image: ghcr.io/huggingface/text-embeddings-inference:cpu-arm64-latest # CPU (aarch64)
     profiles: ["tei", "tei-reranker"]
     volumes:
       - tei-reranker-data:/data
@@ -69,12 +72,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   arxiv-agent:
     image: alimtegar/arxiv-agent:0.1.0
-    volumes:
-      # Mount the source code into the container so changes don't require rebuilding the image
-      - .:/deps/arxiv_agent
+    # volumes:
+    #   # Mount the source code into the container so changes don't require rebuilding the image
+    #   - .:/deps/arxiv_agent
     env_file:
       - .env.production
     environment:
@@ -94,3 +98,4 @@ services:
       resources:
         limits:
           memory: 1.4G
+    restart: unless-stopped
