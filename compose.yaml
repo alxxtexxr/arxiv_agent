@@ -71,16 +71,16 @@ services:
       retries: 10
 
   arxiv-agent:
-    image: alimtegar/arxiv-agent:latest
+    image: alimtegar/arxiv-agent:0.1.0
     volumes:
       # Mount the source code into the container so changes don't require rebuilding the image
       - .:/deps/arxiv_agent
-    ports:
-      - "2024:8000"
     env_file:
       - .env.production
     environment:
       REDIS_URI: redis://redis:6379
+    ports:
+      - "${ARXIV_AGENT_PORT:-2024}:8000"
     depends_on:
       redis:
         condition: service_healthy
