@@ -27,12 +27,11 @@ dependencies = [
     "pgvector>=0.5.0",
     "psycopg[binary]>=3.3.4",
     "python-dotenv>=1.0.1",
-    "sentence-transformers>=5.7.0",
 ]
 
 
 [project.optional-dependencies]
-dev = ["mypy>=1.11.1", "ruff>=0.6.1"]
+local-models = ["sentence-transformers>=5.7.0"]
 
 [build-system]
 requires = ["setuptools>=73.0.0", "wheel"]

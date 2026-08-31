@@ -168,7 +168,9 @@ src/arxiv_agent/data/bookmarked_arxiv_urls.txt
 src/arxiv_agent/data/bookmarked_arxiv_urls_from_github_*.txt
 
 # Miscellaneous
+.DS_Store
 opencode.jsonc
 *.md
 !README.md
 memray*
+_*_/
