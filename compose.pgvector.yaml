@@ -11,6 +11,10 @@ services:
       # - ./init-db:/docker-entrypoint-initdb.d # Set POSTGRES_DB in .env instead to create the database
     env_file:
       - .env
+    environment:
+      POSTGRES_USER: $$PGVECTOR_USER
+      POSTGRES_PASSWORD: $$PGVECTOR_PASSWORD
+      POSTGRES_DB: $$PGVECTOR_DB
     ports:
       # Ensure that only your IP can access this port
       - "5432:5432"
