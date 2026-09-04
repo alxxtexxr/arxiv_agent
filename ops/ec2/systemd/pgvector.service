@@ -1,0 +1,28 @@
+[Unit]
+Description=PostgreSQL with pgvector (Docker Compose)
+After=docker.service
+Requires=docker.service
+
+[Service]
+# Set the working directory to the project root
+WorkingDirectory=/home/ec2-user/arxiv_agent
+
+# Start the containers in detached mode
+ExecStart=/usr/bin/docker compose -f compose.pgvector.yaml up -d
+
+# Stop and remove the containers on service stop
+ExecStop=/usr/bin/docker compose -f compose.pgvector.yaml down
+
+# Restart policy (restart if crashed, but not on normal stop)
+Restart=on-failure
+RestartSec=10
+
+# Run as a non-root user
+User=ec2-user
+
+# Give it enough time to start/stop
+TimeoutStartSec=60
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

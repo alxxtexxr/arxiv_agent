@@ -1,0 +1,32 @@
+[Unit]
+Description=arXiv Agent
+After=network.target pgvector.service
+Wants=pgvector.service  # Optional: starts pgvector if not running
+
+[Service]
+# Set the working directory to the project root
+WorkingDirectory=/home/ec2-user/arxiv_agent
+
+# Use the full path to the langgraph command, bind to all network interfaces
+ExecStart=/home/ec2-user/.local/bin/uv run langgraph dev --host 0.0.0.0 --port 2024 --no-browser
+
+# Automatically restart the process if it crashes
+Restart=always
+
+# Run as a non-root user
+User=ec2-user
+
+# Tell systemd to send SIGTERM when stopping the service
+KillSignal=SIGTERM
+
+# After sending SIGTERM, wait this many seconds for the process to exit gracefully
+TimeoutStopSec=30
+
+# --- Log redirection matching '> arxiv-agent.log 2>&1' ---
+# 'file:' overwrites the log file every time the service starts (matches '>' behavior)
+# Use 'append:' instead if you prefer '>>' (preserve old logs)
+StandardOutput=file:/home/ec2-user/arxiv_agent/arxiv-agent.log
+StandardError=file:/home/ec2-user/arxiv_agent/arxiv-agent.log
+
+[Install]
+WantedBy=multi-user.target
