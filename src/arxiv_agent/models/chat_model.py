@@ -10,15 +10,19 @@ from arxiv_agent.tools import tools
 load_dotenv() # Load environment variables from .env file
 
 _chat_model_str = os.environ["CHAT_MODEL"]
-if len(_chat_model_str.split(":")) != 2:
+if len(_chat_model_str.split(":", 1)) != 2:
     raise ValueError(
         f"Invalid CHAT_MODEL: '{_chat_model_str}'. Expected format: 'model_provider:model_name'."
     )
 
+if "openrouter" in _chat_model_str or ":free" in _chat_model_str:
+    from langchain_openrouter import ChatOpenRouter
+    
+    chat_model = ChatOpenRouter(model=_chat_model_str.split(":", 1)[1])
 if "mistral" in _chat_model_str:
     from langchain_mistralai import ChatMistralAI
     
-    chat_model = ChatMistralAI(model=_chat_model_str.split(":")[1])
+    chat_model = ChatMistralAI(model=_chat_model_str.split(":", 1)[1])
 else:
     chat_model = init_chat_model(
         model=_chat_model_str,

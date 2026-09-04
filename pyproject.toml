@@ -19,6 +19,7 @@ dependencies = [
     "langchain-huggingface>=1.2.2",
     "langchain-mistralai>=1.1.6",
     "langchain-openai>=1.4.1",
+    "langchain-openrouter>=0.2.8",
     "langchain-text-splitters>=1.1.2",
     "langgraph>=1.0.0",
     "langgraph-api>=0.11.1",
