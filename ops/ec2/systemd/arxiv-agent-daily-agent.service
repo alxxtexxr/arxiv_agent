@@ -1,5 +1,5 @@
 [Unit]
-Description=Daily embedding + bookmarks job
+Description=arXiv Agent - daily embedding + bookmarks job
 After=network.target arxiv-agent.service
 Wants=arxiv-agent.service
 

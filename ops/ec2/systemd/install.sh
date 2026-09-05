@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "Copying service files..."
 sudo cp "$SCRIPT_DIR/pgvector.service" "$SERVICE_DIR/"
 sudo cp "$SCRIPT_DIR/arxiv-agent.service" "$SERVICE_DIR/"
-sudo cp "$SCRIPT_DIR/daily-job.service" "$SERVICE_DIR/"
+sudo cp "$SCRIPT_DIR/arxiv-agent-daily-agent.service" "$SERVICE_DIR/"
 
 echo "Reloading systemd..."
 sudo systemctl daemon-reload
@@ -18,11 +18,11 @@ sudo systemctl daemon-reload
 echo "Enabling services..."
 sudo systemctl enable pgvector.service
 sudo systemctl enable arxiv-agent.service
-sudo systemctl enable daily-job.service
+sudo systemctl enable arxiv-agent-daily-agent.service
 
 echo "Done. Services will start on boot:"
 echo "  1. pgvector (vector database)"
 echo "  2. arxiv-agent (LangGraph agent server)"
-echo "  3. daily-job (embedding + bookmarks, then auto-stop)"
+echo "  3. arxiv-agent-daily-agent (embedding + bookmarks, then auto-stop)"
 echo ""
-echo "Check status: systemctl status pgvector arxiv-agent daily-job"
+echo "Check status: systemctl status pgvector arxiv-agent arxiv-agent-daily-agent"
