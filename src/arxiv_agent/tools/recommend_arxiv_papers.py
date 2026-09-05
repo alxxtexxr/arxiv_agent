@@ -73,6 +73,7 @@ def _ensure_db_ready() -> None:
         db.init_schema()
         _db_ready = True
 
+
 def _normalize_arxiv_id(raw_id: str) -> str:
     """Normalize a paper identifier by stripping any version suffix."""
     return re.sub(r"v\d+$", "", raw_id.rstrip("/").split("/")[-1].replace(".pdf", ""))
@@ -80,7 +81,9 @@ def _normalize_arxiv_id(raw_id: str) -> str:
 
 def _fetch_feed_entries() -> list[dict[str, str]]:
     """Fetch today's papers from the arXiv RSS feed."""
-    feed = feedparser.parse(f"https://rss.arxiv.org/rss/{os.environ['ARXIV_RECOMMENDATION_CATEGORY']}")
+    feed = feedparser.parse(
+        f"https://rss.arxiv.org/rss/{os.environ['ARXIV_RECOMMENDATION_CATEGORY']}"
+    )
     return [
         {
             "arxiv_id": _normalize_arxiv_id(entry.link),
@@ -134,7 +137,11 @@ def _fetch_api_entries_for_date(target_date: str) -> list[dict[str, str]]:
 
 
 def _sync_date(target_date: str) -> int:
-    entries = _fetch_feed_entries() if target_date == date_cls.today().isoformat() else _fetch_api_entries_for_date(target_date)
+    entries = (
+        _fetch_feed_entries()
+        if target_date == date_cls.today().isoformat()
+        else _fetch_api_entries_for_date(target_date)
+    )
     if not entries:
         return 0
 
@@ -173,26 +180,35 @@ def _sync_date(target_date: str) -> int:
     # 4. Process chunks in batches
     embedding_model = get_embedding_model()
     total_chunks = len(flat_chunks)
-    BATCH_SIZE = 30  # tune
+    try:
+        EMBEDDING_BATCH_SIZE = int(os.environ.get("EMBEDDING_BATCH_SIZE", 50))
+    except ValueError:
+        EMBEDDING_BATCH_SIZE = 50
 
-    for start in range(0, total_chunks, BATCH_SIZE):
-        batch_chunks = flat_chunks[start:start+BATCH_SIZE]
+    for start in range(0, total_chunks, EMBEDDING_BATCH_SIZE):
+        batch_chunks = flat_chunks[start : start + EMBEDDING_BATCH_SIZE]
         batch_embeddings = embedding_model.embed_documents(batch_chunks)
 
         batch_rows = []
         for idx, chunk_text in enumerate(batch_chunks):
             paper_idx, chunk_idx = chunk_meta[start + idx]
             entry = entries[paper_idx]
-            batch_rows.append({
-                "arxiv_id": entry["arxiv_id"],
-                "chunk_idx": chunk_idx,
-                "content": chunk_text,
-                "embedding": batch_embeddings[idx],
-            })
+            batch_rows.append(
+                {
+                    "arxiv_id": entry["arxiv_id"],
+                    "chunk_idx": chunk_idx,
+                    "content": chunk_text,
+                    "embedding": batch_embeddings[idx],
+                }
+            )
 
-        db.upsert_chunks(batch_rows)   # uses INSERT (no conflict, but we deleted all already)
+        db.upsert_chunks(
+            batch_rows
+        )  # uses INSERT (no conflict, but we deleted all already)
         del batch_chunks, batch_embeddings, batch_rows
-        import gc; gc.collect()
+        import gc
+
+        gc.collect()
 
     # 5. Clean up any papers that might have been orphaned (optional but safe)
     db.cleanup_orphan_papers(target_date)
@@ -207,7 +223,9 @@ def _sync_date(target_date: str) -> int:
 
 def _has_current_chunks(target_date: str) -> bool:
     """Return whether a date has chunks created with the active embedding config."""
-    return db.get_sync_version(target_date) == EMBEDDING_VERSION and db.date_has_chunks(target_date)
+    return db.get_sync_version(target_date) == EMBEDDING_VERSION and db.date_has_chunks(
+        target_date
+    )
 
 
 def _ensure_synced(target_date: str) -> None:
@@ -252,7 +270,9 @@ class _ArxivDateRetriever(BaseRetriever):
         ]
 
 
-def _get_compression_retriever(target_date: str, top_n: int = 5) -> ContextualCompressionRetriever:
+def _get_compression_retriever(
+    target_date: str, top_n: int = 5
+) -> ContextualCompressionRetriever:
     """Return a retrieval + rerank pipeline scoped to a specific date."""
     model = get_reranker_model()
     # FlashrankRerank is already a document compressor; cross-encoders need wrapping.
@@ -282,11 +302,13 @@ def _dedupe_chunks(docs: list[Document]) -> list[str]:
         if paper_id in seen:
             continue
         seen.add(paper_id)
-        papers.append(format_arxiv_paper(
-            title=doc.metadata["title"],
-            url=doc.metadata["url"],
-            abstract=doc.metadata["abstract"],
-        ))
+        papers.append(
+            format_arxiv_paper(
+                title=doc.metadata["title"],
+                url=doc.metadata["url"],
+                abstract=doc.metadata["abstract"],
+            )
+        )
     return papers
 
 
@@ -309,7 +331,9 @@ def _fetch_bookmarked_papers() -> list[dict[str, Any]]:
     cache_key = hashlib.sha1(combined.encode()).hexdigest()
     if cache_key not in _bookmark_cache:
         _bookmark_cache.clear()
-        _bookmark_cache[cache_key] = bookmarked_arxiv_papers._fetch_papers(with_abstract=True)
+        _bookmark_cache[cache_key] = bookmarked_arxiv_papers._fetch_papers(
+            with_abstract=True
+        )
     return _bookmark_cache[cache_key]
 
 
@@ -391,7 +415,7 @@ def recommend_arxiv_papers_by_date(
             if not retrieved_docs:
                 return "No matching papers found for bookmarked papers."
             return "\n\n".join(retrieved_docs)
-        
+
         return "Invalid mode. Please choose 'query_based' or 'personalized'."
     except APIConnectionError:
         logger.exception(
@@ -412,11 +436,17 @@ def recommend_arxiv_papers_by_date(
 
 
 @tool
-def recommend_todays_arxiv_papers(mode: Literal["query_based", "personalized"], query: str | None = None) -> str:
+def recommend_todays_arxiv_papers(
+    mode: Literal["query_based", "personalized"], query: str | None = None
+) -> str:
     """Recommend today's arXiv papers based on either a query or the user's bookmarked papers."""
     try:
         return recommend_arxiv_papers_by_date.invoke(
-            input={"target_date": date_cls.today().isoformat(), "mode": mode, "query": query}
+            input={
+                "target_date": date_cls.today().isoformat(),
+                "mode": mode,
+                "query": query,
+            }
         )
     except Exception as exc:  # pragma: no cover - defensive for server runs
         return f"Recommendation failed: {exc}"
@@ -426,5 +456,9 @@ def recommend_todays_arxiv_papers(mode: Literal["query_based", "personalized"], 
 if __name__ == "__main__":
     from pprint import pprint
 
-    pprint(recommend_todays_arxiv_papers.invoke(input={"mode": "query_based", "query": "machine learning"}))
+    pprint(
+        recommend_todays_arxiv_papers.invoke(
+            input={"mode": "query_based", "query": "machine learning"}
+        )
+    )
     # pprint(recommend_todays_arxiv_papers.invoke(input={"mode": "personalized"}))
