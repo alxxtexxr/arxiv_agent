@@ -181,9 +181,9 @@ def _sync_date(target_date: str) -> int:
     embedding_model = get_embedding_model()
     total_chunks = len(flat_chunks)
     try:
-        EMBEDDING_BATCH_SIZE = int(os.environ.get("EMBEDDING_BATCH_SIZE", 50))
+        EMBEDDING_BATCH_SIZE = int(os.environ.get("EMBEDDING_BATCH_SIZE", 30))
     except ValueError:
-        EMBEDDING_BATCH_SIZE = 50
+        EMBEDDING_BATCH_SIZE = 30
 
     for start in range(0, total_chunks, EMBEDDING_BATCH_SIZE):
         batch_chunks = flat_chunks[start : start + EMBEDDING_BATCH_SIZE]
