@@ -10,3 +10,6 @@ ExecStart=/home/ec2-user/.local/bin/uv run python -m arxiv_agent.prelaunch daily
 User=ec2-user
 EnvironmentFile=/home/ec2-user/arxiv_agent/.env
 Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

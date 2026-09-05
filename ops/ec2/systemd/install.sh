@@ -18,7 +18,7 @@ sudo systemctl daemon-reload
 echo "Enabling services..."
 sudo systemctl enable pgvector.service
 sudo systemctl enable arxiv-agent.service
-# daily-job is triggered by cron, not on boot
+sudo systemctl enable daily-job.service
 
 echo "Done. Services will start on boot:"
 echo "  1. pgvector (vector database)"
