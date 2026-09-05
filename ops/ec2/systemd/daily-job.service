@@ -1,0 +1,18 @@
+[Unit]
+Description=Daily embedding + bookmarks job
+After=network.target arxiv-agent.service
+Wants=arxiv-agent.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ec2-user/arxiv_agent
+ExecStart=/home/ec2-user/.local/bin/uv run python -m arxiv_agent.prelaunch daily_job
+User=ec2-user
+EnvironmentFile=/home/ec2-user/arxiv_agent/.env
+Environment=PYTHONUNBUFFERED=1
+
+# Wait for LangGraph to be ready before running the job
+RestartNo=5
+
+[Install]
+WantedBy=multi-user.target
