@@ -54,25 +54,28 @@ def _is_today_bookmarked() -> bool:
     return path.exists()
 
 
-def run_daily_job() -> str:
+def run_daily_job() -> tuple[str, bool]:
     """Run the daily pre-launch job: bookmarks + embedding.
 
     Skips each step if already done today.
-    Returns a summary of what was executed.
+    Returns a summary of what was executed and whether any work was done.
     """
     results = []
+    did_work = False
 
     if not _is_today_bookmarked():
         results.append(extract_bookmarks())
+        did_work = True
     else:
         results.append("Bookmarks already synced for today.")
 
     if not _is_today_synced():
         results.append(sync_today())
+        did_work = True
     else:
         results.append("Papers already embedded for today.")
 
-    return " | ".join(results)
+    return " | ".join(results), did_work
 
 
 def stop_instance() -> None:
@@ -105,8 +108,12 @@ if __name__ == "__main__":
         sys.exit(f"unknown step '{step}'; expected one of: {', '.join(STEPS)}")
 
     result = STEPS[step]()
-    print(result)
+    if isinstance(result, tuple):
+        message, did_work = result
+    else:
+        message, did_work = result, False
+    print(message)
 
-    # After running the daily job, stop the instance
-    if step == "daily_job":
+    # Only stop the instance if work was actually done
+    if step == "daily_job" and did_work:
         stop_instance()
