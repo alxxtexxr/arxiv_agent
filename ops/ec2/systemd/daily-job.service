@@ -11,8 +11,5 @@ User=ec2-user
 EnvironmentFile=/home/ec2-user/arxiv_agent/.env
 Environment=PYTHONUNBUFFERED=1
 
-# Wait for LangGraph to be ready before running the job
-RestartNo=5
-
 [Install]
 WantedBy=multi-user.target
