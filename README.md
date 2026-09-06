@@ -17,8 +17,7 @@ Visit https://arxiv-agent-chat.pages.dev?key=hostes, enter the access key, and s
 1. Open a terminal, clone the repository, and navigate to the repository directory.
 
 ```bash
-git clone https://github.com/alxxtexxr/arxiv_agent.git
-cd arxiv_agent
+git clone https://github.com/alxxtexxr/arxiv_agent.git && cd arxiv_agent
 ```
 
 2. Create `.env.production` by copying `.env.production.example`, then set the API key and model configuration. Optionally, set the other configuration based on your preferences or needs.
@@ -36,11 +35,11 @@ docker compose up -d
 4. The agent server should now be running at http://localhost:2024. Open this URL in a browser to verify that it is running. You should see:
 ```json
 {
-    ok: "true"
+    "ok": "true"
 }
 ```
 
-5. To start chatting with the agent, set up the chat UI by following the `README.md` int the [arxiv-agent-chat-ui](https://github.com/alxxtexxr/arxiv-agent-chat-ui) repository, or chat via LangSmith Studio (https://smith.langchain.com/studio?baseUrl=http://localhost:2024).
+5. To start chatting with the agent, set up the chat UI by following the `README.md` int the [arxiv-agent-chat-ui](https://github.com/alxxtexxr/arxiv-agent-chat-ui) repository, or more conveniently, use LangSmith Studio (https://smith.langchain.com/studio?baseUrl=http://localhost:2024).
 
 ## Development
 
@@ -49,15 +48,13 @@ docker compose up -d
 1. Open a terminal, clone the repository, and navigate to the repository directory.
 
 ```bash
-git clone https://github.com/alxxtexxr/arxiv_agent.git
-cd arxiv_agent
+git clone https://github.com/alxxtexxr/arxiv_agent.git && cd arxiv_agent
 ```
 
 2. Install the Python dependencies.
 
 ```bash
-uv init
-uv sync
+uv init && uv sync
 ```
 
 3. Run the PostgreSQL server.
