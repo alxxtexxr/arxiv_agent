@@ -75,7 +75,7 @@ services:
     restart: unless-stopped
 
   arxiv-agent:
-    image: alimtegar/arxiv-agent:0.1.0
+    image: alimtegar/arxiv-agent:latest
     # volumes:
     #   # Mount the source code into the container so changes don't require rebuilding the image
     #   - .:/deps/arxiv_agent
