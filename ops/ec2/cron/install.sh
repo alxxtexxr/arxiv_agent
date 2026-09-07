@@ -16,12 +16,12 @@ echo "Installing cron entry..."
 # Run stop_if_idle.sh every 5 minutes
 CRON_LINE="*/5 * * * * $INSTALL_DIR/stop_if_idle.sh >> /home/ec2-user/auto-stop.log 2>&1"
 # Add the cron line if it doesn't already exist
-crontab -l 2>/dev/null | grep -F "arxiv-agent-cron/stop_if_idle.sh" >/dev/null 2>&1 || {
+if ! crontab -l 2>/dev/null | grep -qF "arxiv-agent-cron/stop_if_idle.sh"; then
     (
-        crontab -l 2>/dev/null
+        crontab -l 2>/dev/null || true
         echo "$CRON_LINE"
     ) | crontab -
-}
+fi
 
 echo "Done. Cron job installed:"
 echo "  stop_if_idle.sh  →  every 5 minutes (checks idle timeout, stops instance if inactive)"
