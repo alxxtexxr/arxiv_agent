@@ -12,6 +12,14 @@ sudo mkdir -p "$INSTALL_DIR"
 sudo cp "$SCRIPT_DIR/stop_if_idle.sh" "$INSTALL_DIR/"
 sudo chmod +x "$INSTALL_DIR/stop_if_idle.sh"
 
+echo "Initializing activity file..."
+# Create .last_activity so stop_if_idle.sh doesn't skip on first run
+ACTIVITY_FILE="/home/ec2-user/arxiv_agent/.last_activity"
+if [[ ! -f "$ACTIVITY_FILE" ]]; then
+    date +%s >"$ACTIVITY_FILE"
+    echo "  Created $ACTIVITY_FILE with current timestamp"
+fi
+
 echo "Installing cron entry..."
 # Run stop_if_idle.sh every 5 minutes
 CRON_LINE="*/5 * * * * $INSTALL_DIR/stop_if_idle.sh >> /home/ec2-user/auto-stop.log 2>&1"
