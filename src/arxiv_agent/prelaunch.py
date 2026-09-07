@@ -2,21 +2,41 @@
 
 Runs daily on EC2 boot: extracts bookmarks, syncs today's papers,
 then stops the instance when done.
+
+A single daily-job-done flag file (data/daily_job_done) records the
+last completed date, preventing auto-stop on same-day re-boots.
 """
 
+import logging
 import sys
-import subprocess
 from datetime import date
+from pathlib import Path
 
 from arxiv_agent.tools.bookmarked_arxiv_urls_from_github import (
     extract_bookmarked_arxiv_urls_from_github,
 )
 from arxiv_agent.tools.recommend_arxiv_papers import _ensure_synced
 
+DATA_DIR = Path(__file__).parent / "data"
+_DAILY_JOB_DONE_FLAG = DATA_DIR / "daily_job_done"
+
+
+def _is_daily_job_done() -> bool:
+    """Return True if the daily job has already completed today."""
+    if not _DAILY_JOB_DONE_FLAG.exists():
+        return False
+    return _DAILY_JOB_DONE_FLAG.read_text().strip() == date.today().isoformat()
+
+
+def _mark_daily_job_done() -> None:
+    """Write today's date to the daily-job-done flag file."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    _DAILY_JOB_DONE_FLAG.write_text(date.today().isoformat())
+
 
 def extract_bookmarks() -> str:
     """Refresh bookmarked arXiv URLs from the configured source."""
-    return extract_bookmarked_arxiv_urls_from_github.invoke({})
+    return extract_bookmarked_arxiv_urls_from_github.invoke({})  # type: ignore[reportFunctionMemberAccess]
 
 
 def sync_today() -> str:
@@ -26,61 +46,34 @@ def sync_today() -> str:
     return f"Synced papers for {today}."
 
 
-def _is_today_synced() -> bool:
-    """Check if today's papers are already embedded."""
-    from arxiv_agent.tools.recommend_arxiv_papers import _has_current_chunks
-    from datetime import date as date_cls
-
-    return _has_current_chunks(date_cls.today().isoformat())
-
-
-def _is_today_bookmarked() -> bool:
-    """Check if today's bookmarks file already exists."""
-    from pathlib import Path
-    from arxiv_agent.tools.bookmarked_arxiv_urls_from_github import (
-        _derive_github_bookmarks_name,
-    )
-    import os
-
-    url = os.environ.get("GITHUB_BOOKMARKS_URL", "")
-    if not url:
-        return True  # No bookmarks configured, skip
-    name = _derive_github_bookmarks_name(url)
-    path = (
-        Path(__file__).parent
-        / "data"
-        / f"bookmarked_arxiv_urls_from_github_{name}.txt"
-    )
-    return path.exists()
-
-
 def run_daily_job() -> tuple[str, bool]:
     """Run the daily pre-launch job: bookmarks + embedding.
 
-    Skips each step if already done today.
-    Returns a summary of what was executed and whether any work was done.
+    If the daily job has already completed today (flag file exists),
+    skips everything and returns (summary, False) so the caller
+    knows NOT to stop the instance.
+
+    On first run of the day, executes each step, writes the
+    done-flag, and returns (summary, True) so the caller can
+    stop the instance.
     """
+    if _is_daily_job_done():
+        return "Daily job already completed today. Instance will keep running.", False
+
     results = []
-    did_work = False
 
-    if not _is_today_bookmarked():
-        results.append(extract_bookmarks())
-        did_work = True
-    else:
-        results.append("Bookmarks already synced for today.")
+    results.append(extract_bookmarks())
+    results.append(sync_today())
 
-    if not _is_today_synced():
-        results.append(sync_today())
-        did_work = True
-    else:
-        results.append("Papers already embedded for today.")
+    _mark_daily_job_done()
 
-    return " | ".join(results), did_work
+    return " | ".join(results), True
 
 
 def stop_instance() -> None:
     """Stop the EC2 instance via the instance-control-api."""
     import os
+
     import requests
 
     api_url = (
@@ -91,9 +84,9 @@ def stop_instance() -> None:
     headers = {"X-Api-Key": api_key} if api_key else {}
     try:
         requests.post(api_url, headers=headers, timeout=30)
-        print("Instance stop requested.")
+        logging.info("Instance stop requested.")
     except Exception as e:
-        print(f"Failed to stop instance: {e}")
+        logging.error("Failed to stop instance: %s", e)
 
 
 STEPS = {
@@ -112,8 +105,9 @@ if __name__ == "__main__":
         message, did_work = result
     else:
         message, did_work = result, False
-    print(message)
+    logging.info("%s", message)
 
-    # Only stop the instance if work was actually done
+    # Only stop the instance on the first daily-job run of the day.
+    # Subsequent boots same day find the flag file and skip the stop.
     if step == "daily_job" and did_work:
         stop_instance()
