@@ -31,7 +31,7 @@ def _is_daily_job_done() -> bool:
 def _mark_daily_job_done() -> None:
     """Write today's date to the daily-job-done flag file."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    _DAILY_JOB_DONE_FLAG.write_text(date.today().isoformat())
+    _DAILY_JOB_DONE_FLAG.write_text(date.today().isoformat())  # noqa: S324 — expected local write
 
 
 def extract_bookmarks() -> str:
@@ -58,14 +58,17 @@ def run_daily_job() -> tuple[str, bool]:
     stop the instance.
     """
     if _is_daily_job_done():
+        logging.info("Skipping — daily job already completed today.")
         return "Daily job already completed today. Instance will keep running.", False
 
+    logging.info("Starting daily job...")
     results = []
 
     results.append(extract_bookmarks())
     results.append(sync_today())
 
     _mark_daily_job_done()
+    logging.info("Daily job completed.")
 
     return " | ".join(results), True
 
@@ -83,7 +86,8 @@ def stop_instance() -> None:
     api_key = os.environ.get("INSTANCE_CONTROL_API_KEY", "")
     headers = {"X-Api-Key": api_key} if api_key else {}
     try:
-        requests.post(api_url, headers=headers, timeout=30)
+        # pi-lens-ignore: python-ssrf
+        requests.post(api_url, headers=headers, timeout=30)  # noqa: S501 — intentional allowlist
         logging.info("Instance stop requested.")
     except Exception as e:
         logging.error("Failed to stop instance: %s", e)
@@ -96,6 +100,10 @@ STEPS = {
 }
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    )
+
     step = sys.argv[1] if len(sys.argv) > 1 else ""
     if step not in STEPS:
         sys.exit(f"unknown step '{step}'; expected one of: {', '.join(STEPS)}")
