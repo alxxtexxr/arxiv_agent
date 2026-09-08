@@ -1,7 +1,7 @@
 """Chat model-calling node for the agent graph."""
 
+import time
 from pathlib import Path
-from time import time
 from typing import Any, Dict
 
 from langchain.messages import SystemMessage
