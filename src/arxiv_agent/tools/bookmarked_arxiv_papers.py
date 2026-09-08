@@ -129,7 +129,7 @@ def bookmark_arxiv_papers(urls: list[str], secret_password: str) -> str:
         A string indicating the result of the bookmarking operation.
     """
     # Check the secret password
-    if secret_password != os.environ.get("BOOKMARK_SECRET_PASSWORD"):
+    if secret_password != os.environ["BOOKMARK_SECRET_PASSWORD"]:
         return "Invalid secret password."
     
     # Get the list of bookmark files and the main bookmark file
@@ -142,8 +142,7 @@ def bookmark_arxiv_papers(urls: list[str], secret_password: str) -> str:
         with open(bookmark_file, "r") as f:
             existing_urls.extend(f.read().splitlines())
 
-    new_urls = []
-    responses = []
+    new_urls, responses = [], []
     for url in urls:
         # Sanitize the URL
         url = url.replace(".pdf", "")   # Remove .pdf extension if present
@@ -177,47 +176,75 @@ def bookmark_arxiv_papers(urls: list[str], secret_password: str) -> str:
 
     return "\n".join(responses)
         
-# @tool
-# def unbookmark_arxiv_papers(urls: list[str], secret_password: str) -> str:
-#     """Unbookmark one or more arXiv papers by URL.
+@tool
+def unbookmark_arxiv_papers(urls: list[str], secret_password: str) -> str:
+    """Unbookmark one or more arXiv papers by URL.
 
-#     Args:
-#         urls: A list of URLs of the arXiv papers to unbookmark.
-#         secret_password: A secret password for authentication.
+    Args:
+        urls: A list of URLs of the arXiv papers to unbookmark.
+        secret_password: A secret password for authentication.
 
-#     Returns:
-#         A string indicating the result of the unbookmarking operation.
-#     """
-#     if secret_password != os.environ.get("BOOKMARK_SECRET_PASSWORD"):
-#         return "Invalid secret password."
+    Returns:
+        A string indicating the result of the unbookmarking operation.
+    """
+    # Check the secret password
+    if secret_password != os.environ["BOOKMARK_SECRET_PASSWORD"]:
+        return "Invalid secret password."
 
-#     bookmarked_file = BOOKMARKED_ARXIV_DATA_DIR / "bookmarked_arxiv_urls.txt"
-#     if not bookmarked_file.exists():
-#         return "No bookmarked arXiv papers found."
+    # Get the list of bookmark files and the main bookmark file
+    bookmark_files = _get_bookmarked_files()
+    main_bookmark_file = bookmark_files[0]
+    
+    # Read existing bookmarked URLs from all bookmark files
+    existing_urls, source_files = [], []
+    for bookmark_file in bookmark_files:
+        with open(bookmark_file, "r") as f:
+            file_urls = f.read().splitlines()
+            existing_urls.extend(file_urls)
+            source_files.extend([bookmark_file] * len(file_urls))
 
-#     existing_urls = set(bookmarked_file.read_text().splitlines())
-#     for url in urls:
-#         if url not in existing_urls:
-#             return f"The paper at {url} is not bookmarked."
+    assert len(existing_urls) == len(source_files), "Mismatch in existing URLs and source files count."
 
-#     with open(bookmarked_file, "w") as f:
-#         for url in existing_urls:
-#             if url not in urls:
-#                 f.write(url + "\n")
+    kept_urls, responses = [], []
+    for i, existing_url in enumerate(existing_urls):
+        if existing_url in urls:
+            # Don't bookmark the URL if it's not in the main bookmark file
+            if source_files[i] == main_bookmark_file:
+                responses.append(f"Successfully unbookmarked the paper at {existing_url}.")
+            else:
+                responses.append(f"The paper at {existing_url} is not in the main bookmark file and cannot be unbookmarked.")
+        else:
+            # Keep the URL
+            kept_urls.append(existing_url)
 
-#     return f"Successfully unbookmarked {len(urls)} paper(s)."
+    # Write the kept URLs back to the main bookmark file
+    with open(main_bookmark_file, "w") as f:
+        for url in kept_urls:
+            f.write(url + "\n")
+
+    return "\n".join(responses)
 
 # Test the function
 if __name__ == "__main__":
     from pprint import pprint
     
     # data = _fetch_papers(with_abstract=True)
+    # pprint(data)
+    
     data = bookmark_arxiv_papers.invoke(input={
         "urls": [
             "https://arxiv.org/abs/2306.00001",
-            "https://arxiv.org/abs/2306.00002v2"
+            "https://arxiv.org/abs/2306.00002v2",
         ],
         "secret_password": os.environ["BOOKMARK_SECRET_PASSWORD"],
     })
+    pprint(data)
     
+    data = unbookmark_arxiv_papers.invoke(input={
+        "urls": [
+            "https://arxiv.org/abs/2306.00001",
+            "https://arxiv.org/abs/2306.00002",
+        ],
+        "secret_password": os.environ["BOOKMARK_SECRET_PASSWORD"],
+    })
     pprint(data)

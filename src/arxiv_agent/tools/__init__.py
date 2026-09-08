@@ -4,6 +4,7 @@ from arxiv_agent.tools.bookmarked_arxiv_papers import (
     get_bookmarked_arxiv_papers,
     search_bookmarked_arxiv_papers,
     bookmark_arxiv_papers,
+    unbookmark_arxiv_papers,
 )
 from arxiv_agent.tools.bookmarked_arxiv_urls_from_github import (
     extract_bookmarked_arxiv_urls_from_github,
@@ -17,6 +18,7 @@ tools = [
     get_bookmarked_arxiv_papers,
     search_bookmarked_arxiv_papers,
     bookmark_arxiv_papers,
+    unbookmark_arxiv_papers,
     recommend_todays_arxiv_papers,
     extract_bookmarked_arxiv_urls_from_github,
     recommend_arxiv_papers_by_date,
