@@ -39,7 +39,7 @@ def _touch_activity() -> None:
     """Touch the activity file so the idle-stop cron script knows we're busy."""
     import time
 
-    activity_file = Path(__file__).parent / ".last_activity"
+    activity_file = Path(__file__).parent.parent / ".last_activity"
     activity_file.write_text(str(time.time()))
 
 
