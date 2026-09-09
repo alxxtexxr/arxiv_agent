@@ -35,6 +35,14 @@ def _mark_daily_job_done() -> None:
     _DAILY_JOB_DONE_FLAG.write_text(date.today().isoformat())
 
 
+def _touch_activity() -> None:
+    """Touch the activity file so the idle-stop cron script knows we're busy."""
+    import time
+
+    activity_file = Path(__file__).parent / ".last_activity"
+    activity_file.write_text(str(time.time()))
+
+
 def extract_bookmarks() -> str:
     """Refresh bookmarked arXiv URLs from the configured source."""
     return extract_bookmarked_arxiv_urls_from_github.invoke({})  # type: ignore[reportFunctionMemberAccess]
@@ -72,6 +80,9 @@ def run_daily_job() -> tuple[str, bool]:
     if _is_daily_job_done():
         logging.info("Skipping — daily job already completed today.")
         return "Daily job already completed today. Instance will keep running.", False
+
+    # Touch the activity file so the idle-stop cron script knows we're busy.
+    _touch_activity()
 
     logging.info("Starting daily job...")
     results = []
