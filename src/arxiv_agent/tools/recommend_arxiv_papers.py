@@ -452,13 +452,33 @@ def recommend_todays_arxiv_papers(
         return f"Recommendation failed: {exc}"
 
 
-# Test the tool function
+# ---------------------------------------------------------------------------
+# CLI entry-point: allows running _sync_date in a subprocess so that all
+# memory (embedding model, intermediate tensors) is released when it exits.
+# ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    from pprint import pprint
+    import sys
 
-    pprint(
-        recommend_todays_arxiv_papers.invoke(
-            input={"mode": "query_based", "query": "machine learning"}
-        )
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
-    # pprint(recommend_todays_arxiv_papers.invoke(input={"mode": "personalized"}))
+
+    if len(sys.argv) == 2 and sys.argv[1] == "--test-recommend":
+        from pprint import pprint
+
+        pprint(
+            recommend_todays_arxiv_papers.invoke(
+                input={"mode": "query_based", "query": "machine learning"}
+            )
+        )
+    elif len(sys.argv) == 2:
+        target_date = sys.argv[1]
+        _ensure_db_ready()
+        count = _sync_date(target_date)
+        logging.info("Synced %d chunks for %s.", count, target_date)
+    else:
+        print(
+            "Usage: python -m arxiv_agent.tools.recommend_arxiv_papers <YYYY-MM-DD>",
+            file=sys.stderr,
+        )
+        sys.exit(1)

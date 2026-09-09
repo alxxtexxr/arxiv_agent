@@ -8,6 +8,7 @@ last completed date, preventing auto-stop on same-day re-boots.
 """
 
 import logging
+import subprocess
 import sys
 from datetime import date
 from pathlib import Path
@@ -15,7 +16,6 @@ from pathlib import Path
 from arxiv_agent.tools.bookmarked_arxiv_urls_from_github import (
     extract_bookmarked_arxiv_urls_from_github,
 )
-from arxiv_agent.tools.recommend_arxiv_papers import _ensure_synced
 
 DATA_DIR = Path(__file__).parent / "data"
 _DAILY_JOB_DONE_FLAG = DATA_DIR / "daily_job_done"
@@ -41,9 +41,20 @@ def extract_bookmarks() -> str:
 
 
 def sync_today() -> str:
-    """Fetch, chunk, and embed today's arXiv papers."""
+    """Fetch, chunk, and embed today's arXiv papers.
+
+    Runs in a subprocess so that all memory (embedding model, intermediate
+    tensors) is released when the subprocess exits — keeping peak RSS lower.
+    """
     today = date.today().isoformat()
-    _ensure_synced(today)
+    cmd = [
+        sys.executable,
+        "-m",
+        "arxiv_agent.tools.recommend_arxiv_papers",
+        today,
+    ]
+    logging.info("Spawning embedding subprocess: %s", " ".join(cmd))
+    subprocess.run(cmd, check=True)
     return f"Synced papers for {today}."
 
 
