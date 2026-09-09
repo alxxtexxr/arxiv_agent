@@ -25,13 +25,14 @@ def _is_daily_job_done() -> bool:
     """Return True if the daily job has already completed today."""
     if not _DAILY_JOB_DONE_FLAG.exists():
         return False
-    return _DAILY_JOB_DONE_FLAG.read_text().strip() == date.today().isoformat()
+    saved = _DAILY_JOB_DONE_FLAG.read_text().strip()
+    return saved == date.today().isoformat()
 
 
 def _mark_daily_job_done() -> None:
     """Write today's date to the daily-job-done flag file."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    _DAILY_JOB_DONE_FLAG.write_text(date.today().isoformat())  # noqa: S324 — expected local write
+    _DAILY_JOB_DONE_FLAG.write_text(date.today().isoformat())
 
 
 def extract_bookmarks() -> str:
