@@ -49,11 +49,22 @@ def extract_bookmarks() -> str:
 
 def sync_today() -> str:
     """Fetch, chunk, and embed today's arXiv papers."""
+    import logging
+    log = logging.getLogger(__name__)
+
+    log.info("  2a: Importing recommend_arxiv_papers...")
     from arxiv_agent.tools.recommend_arxiv_papers import _ensure_db_ready, _sync_date
+    log.info("  2a: Import done.")
 
     today = date.today().isoformat()
+    log.info("  2b: Ensuring DB ready...")
     _ensure_db_ready()
+    log.info("  2b: DB ready.")
+
+    log.info("  2c: Syncing date %s...", today)
     _sync_date(today)
+    log.info("  2c: Sync done.")
+
     return f"Synced papers for {today}."
 
 
