@@ -12,6 +12,10 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from arxiv_agent.tools.bookmarked_arxiv_urls_from_github import (
+    extract_bookmarked_arxiv_urls_from_github,
+)
+
 DATA_DIR = Path(__file__).parent / "data"
 _DAILY_JOB_DONE_FLAG = DATA_DIR / "daily_job_done"
 
@@ -40,16 +44,12 @@ def _touch_activity() -> None:
 
 def extract_bookmarks() -> str:
     """Refresh bookmarked arXiv URLs from the configured source."""
-    from arxiv_agent.tools.bookmarked_arxiv_urls_from_github import (
-        extract_bookmarked_arxiv_urls_from_github,
-    )
     return extract_bookmarked_arxiv_urls_from_github.invoke({})  # type: ignore[reportFunctionMemberAccess]
 
 
 def sync_today() -> str:
     """Fetch, chunk, and embed today's arXiv papers."""
     from arxiv_agent.tools.recommend_arxiv_papers import _ensure_db_ready, _sync_date
-
     today = date.today().isoformat()
     _ensure_db_ready()
     _sync_date(today)
