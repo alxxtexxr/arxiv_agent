@@ -7,7 +7,7 @@ from langchain.chat_models import init_chat_model
 
 from arxiv_agent.tools import _all_tools
 
-load_dotenv() # Load environment variables from .env file
+load_dotenv()  # Load environment variables from .env file
 
 _chat_model_str = os.environ["CHAT_MODEL"]
 if len(_chat_model_str.split(":", 1)) != 2:
@@ -17,11 +17,11 @@ if len(_chat_model_str.split(":", 1)) != 2:
 
 if "openrouter" in _chat_model_str or ":free" in _chat_model_str:
     from langchain_openrouter import ChatOpenRouter
-    
+
     chat_model = ChatOpenRouter(model=_chat_model_str.split(":", 1)[1])
 if "mistral" in _chat_model_str:
     from langchain_mistralai import ChatMistralAI
-    
+
     chat_model = ChatMistralAI(model=_chat_model_str.split(":", 1)[1])
 else:
     chat_model = init_chat_model(

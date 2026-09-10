@@ -137,35 +137,29 @@ def _fetch_api_entries_for_date(target_date: str) -> list[dict[str, str]]:
 
 
 def _sync_date(target_date: str) -> int:
-    logging.info("    _sync_date: comparing dates...")
     entries = (
         _fetch_feed_entries()
         if target_date == date_cls.today().isoformat()
         else _fetch_api_entries_for_date(target_date)
     )
-    logging.info("    _sync_date: got %d entries.", len(entries))
     if not entries:
         return 0
 
-    # 1. Build paper metadata and chunks (same as before)
-    logging.info("    _sync_date: building paper docs...")
+    # 1. Build paper metadata and chunks
     paper_docs = [
         format_arxiv_paper(title=e["title"], url=e["url"], abstract=e["abstract"])
         for e in entries
     ]
-    logging.info("    _sync_date: splitting into chunks...")
     chunks_per_paper = [text_splitter.split_text(doc) for doc in paper_docs]
     flat_chunks = [chunk for chunks in chunks_per_paper for chunk in chunks]
-    logging.info("    _sync_date: %d total chunks.", len(flat_chunks))
 
-    # Pre‑compute mapping from flat_chunk index to (paper_index, chunk_idx)
+    # Pre-compute mapping from flat_chunk index to (paper_index, chunk_idx)
     chunk_meta = []
     for i, chunks in enumerate(chunks_per_paper):
         for j in range(len(chunks)):
             chunk_meta.append((i, j))
 
     # 2. Upsert papers (metadata) once
-    logging.info("    _sync_date: upserting %d papers to DB...", len(entries))
     paper_params = [
         (
             e["arxiv_id"],
@@ -179,17 +173,12 @@ def _sync_date(target_date: str) -> int:
     with db._connect() as connection, connection.transaction():
         with connection.cursor() as cursor:
             cursor.executemany(db.UPSERT_PAPER_SQL, paper_params)
-    logging.info("    _sync_date: papers upserted.")
 
-    # 3. Delete all existing chunks for this date (critical fix)
-    logging.info("    _sync_date: deleting old chunks...")
+    # 3. Delete all existing chunks for this date
     db.delete_chunks_for_date(target_date)
-    logging.info("    _sync_date: old chunks deleted.")
 
     # 4. Process chunks in batches
-    logging.info("    _sync_date: loading embedding model...")
     embedding_model = get_embedding_model()
-    logging.info("    _sync_date: embedding model loaded.")
     total_chunks = len(flat_chunks)
     try:
         EMBEDDING_BATCH_SIZE = int(os.environ.get("EMBEDDING_BATCH_SIZE", 30))

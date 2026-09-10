@@ -9,7 +9,7 @@ last completed date, preventing auto-stop on same-day re-boots.
 
 import logging
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from arxiv_agent.tools.bookmarked_arxiv_urls_from_github import (
@@ -25,13 +25,15 @@ def _is_daily_job_done() -> bool:
     if not _DAILY_JOB_DONE_FLAG.exists():
         return False
     saved = _DAILY_JOB_DONE_FLAG.read_text().strip()
-    return saved == date.today().isoformat()
+    # The file now contains a full timestamp (e.g. 2026-09-10T04:16:04),
+    # but we only compare the date part for same-day detection.
+    return saved[:10] == date.today().isoformat()
 
 
 def _mark_daily_job_done() -> None:
-    """Write today's date to the daily-job-done flag file."""
+    """Write today's date and time to the daily-job-done flag file."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    _DAILY_JOB_DONE_FLAG.write_text(date.today().isoformat())
+    _DAILY_JOB_DONE_FLAG.write_text(datetime.now().isoformat(timespec="seconds"))
 
 
 def _touch_activity() -> None:
@@ -49,22 +51,10 @@ def extract_bookmarks() -> str:
 
 def sync_today() -> str:
     """Fetch, chunk, and embed today's arXiv papers."""
-    import logging
-    log = logging.getLogger(__name__)
-
-    log.info("  2a: Importing recommend_arxiv_papers...")
     from arxiv_agent.tools.recommend_arxiv_papers import _ensure_db_ready, _sync_date
-    log.info("  2a: Import done.")
-
     today = date.today().isoformat()
-    log.info("  2b: Ensuring DB ready...")
     _ensure_db_ready()
-    log.info("  2b: DB ready.")
-
-    log.info("  2c: Syncing date %s...", today)
     _sync_date(today)
-    log.info("  2c: Sync done.")
-
     return f"Synced papers for {today}."
 
 
@@ -89,16 +79,11 @@ def run_daily_job() -> tuple[str, bool]:
     logging.info("Starting daily job...")
     results = []
 
-    logging.info("Step 1/3: Extracting bookmarks...")
     results.append(extract_bookmarks())
-    logging.info("Step 1/3: Done.")
-
-    logging.info("Step 2/3: Syncing today's papers...")
     results.append(sync_today())
-    logging.info("Step 2/3: Done.")
 
     _mark_daily_job_done()
-    logging.info("Step 3/3: Daily job completed.")
+    logging.info("Daily job completed.")
 
     return " | ".join(results), True
 

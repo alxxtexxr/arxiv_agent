@@ -31,6 +31,7 @@ def _load_heavy_tools():
         recommend_arxiv_papers_by_date,
         recommend_todays_arxiv_papers,
     )
+
     return recommend_todays_arxiv_papers, recommend_arxiv_papers_by_date
 
 
