@@ -19,7 +19,7 @@ load_dotenv()
 
 # Directly load recommend_arxiv_papers.py as a standalone module, bypassing
 # the arxiv_agent package __init__.py which would pull in the full graph.
-_script_dir = Path(__file__).resolve().parent.parent / "src" / "arxiv_agent" / "tools"
+_script_dir = Path(__file__).resolve().parent.parent / "tools"
 _spec = importlib.util.spec_from_file_location(
     "recommend_arxiv_papers",
     _script_dir / "recommend_arxiv_papers.py",
