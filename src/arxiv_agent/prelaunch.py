@@ -55,7 +55,7 @@ def sync_today() -> str:
     tensors) is released when the subprocess exits — keeping peak RSS lower.
     """
     today = date.today().isoformat()
-    script = Path(__file__).parent.parent.parent / "scripts" / "sync_today.py"
+    script = Path(__file__).parent / "scripts" / "sync_today.py"
     cmd = [
         sys.executable,
         str(script),
