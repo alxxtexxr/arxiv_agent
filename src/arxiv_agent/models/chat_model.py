@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 
-from arxiv_agent.tools import tools
+from arxiv_agent.tools import _all_tools
 
 load_dotenv() # Load environment variables from .env file
 
@@ -29,4 +29,4 @@ else:
         reasoning_effort=os.environ["CHAT_MODEL_REASONING_EFFORT"],
     )
 
-chat_model_with_tools = chat_model.bind_tools(tools)
+chat_model_with_tools = chat_model.bind_tools(_all_tools())
