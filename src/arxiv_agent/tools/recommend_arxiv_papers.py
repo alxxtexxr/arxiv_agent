@@ -165,6 +165,7 @@ def _sync_date(target_date: str) -> int:
             chunk_meta.append((i, j))
 
     # 2. Upsert papers (metadata) once
+    logging.info("    _sync_date: upserting %d papers to DB...", len(entries))
     paper_params = [
         (
             e["arxiv_id"],
@@ -178,12 +179,17 @@ def _sync_date(target_date: str) -> int:
     with db._connect() as connection, connection.transaction():
         with connection.cursor() as cursor:
             cursor.executemany(db.UPSERT_PAPER_SQL, paper_params)
+    logging.info("    _sync_date: papers upserted.")
 
     # 3. Delete all existing chunks for this date (critical fix)
+    logging.info("    _sync_date: deleting old chunks...")
     db.delete_chunks_for_date(target_date)
+    logging.info("    _sync_date: old chunks deleted.")
 
     # 4. Process chunks in batches
+    logging.info("    _sync_date: loading embedding model...")
     embedding_model = get_embedding_model()
+    logging.info("    _sync_date: embedding model loaded.")
     total_chunks = len(flat_chunks)
     try:
         EMBEDDING_BATCH_SIZE = int(os.environ.get("EMBEDDING_BATCH_SIZE", 30))
