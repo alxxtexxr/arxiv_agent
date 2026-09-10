@@ -50,6 +50,7 @@ def extract_bookmarks() -> str:
 def sync_today() -> str:
     """Fetch, chunk, and embed today's arXiv papers."""
     from arxiv_agent.tools.recommend_arxiv_papers import _ensure_db_ready, _sync_date
+
     today = date.today().isoformat()
     _ensure_db_ready()
     _sync_date(today)
@@ -77,11 +78,16 @@ def run_daily_job() -> tuple[str, bool]:
     logging.info("Starting daily job...")
     results = []
 
+    logging.info("Step 1/3: Extracting bookmarks...")
     results.append(extract_bookmarks())
+    logging.info("Step 1/3: Done.")
+
+    logging.info("Step 2/3: Syncing today's papers...")
     results.append(sync_today())
+    logging.info("Step 2/3: Done.")
 
     _mark_daily_job_done()
-    logging.info("Daily job completed.")
+    logging.info("Step 3/3: Daily job completed.")
 
     return " | ".join(results), True
 
