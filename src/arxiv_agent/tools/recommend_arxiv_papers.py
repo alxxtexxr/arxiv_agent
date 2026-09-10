@@ -137,21 +137,26 @@ def _fetch_api_entries_for_date(target_date: str) -> list[dict[str, str]]:
 
 
 def _sync_date(target_date: str) -> int:
+    logging.info("    _sync_date: comparing dates...")
     entries = (
         _fetch_feed_entries()
         if target_date == date_cls.today().isoformat()
         else _fetch_api_entries_for_date(target_date)
     )
+    logging.info("    _sync_date: got %d entries.", len(entries))
     if not entries:
         return 0
 
     # 1. Build paper metadata and chunks (same as before)
+    logging.info("    _sync_date: building paper docs...")
     paper_docs = [
         format_arxiv_paper(title=e["title"], url=e["url"], abstract=e["abstract"])
         for e in entries
     ]
+    logging.info("    _sync_date: splitting into chunks...")
     chunks_per_paper = [text_splitter.split_text(doc) for doc in paper_docs]
     flat_chunks = [chunk for chunks in chunks_per_paper for chunk in chunks]
+    logging.info("    _sync_date: %d total chunks.", len(flat_chunks))
 
     # Pre‑compute mapping from flat_chunk index to (paper_index, chunk_idx)
     chunk_meta = []
