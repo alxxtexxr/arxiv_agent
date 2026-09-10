@@ -55,10 +55,10 @@ def sync_today() -> str:
     tensors) is released when the subprocess exits — keeping peak RSS lower.
     """
     today = date.today().isoformat()
+    script = Path(__file__).parent.parent / "tools" / "recommend_arxiv_papers.py"
     cmd = [
         sys.executable,
-        "-m",
-        "arxiv_agent.tools.recommend_arxiv_papers",
+        str(script),
         today,
     ]
     logging.info("Spawning embedding subprocess: %s", " ".join(cmd))
